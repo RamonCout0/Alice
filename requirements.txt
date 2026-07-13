@@ -1,0 +1,7 @@
+ollama>=0.4.0
+
+# --- opcional: integração MCP (servidores de ferramentas) ---
+mcp>=1.0.0
+
+# --- opcional: frontend Discord ---
+discord.py>=2.3

@@ -1,0 +1,26 @@
+{
+  "model": "qwen2.5-coder:7b",
+  "ollama_host": "http://localhost:11434",
+  "num_ctx": 16384,
+  "temperature": 0.4,
+  "workdir": ".",
+  "confirm_commands": true,
+  "max_tool_chars": 12000,
+
+  "discord_token": "",
+  "owner_discord_id": 0,
+
+  "mcp_servers": {
+    "_comentario": "Descomente/edite para plugar servidores MCP reais. Precisa de Node (npx) ou uv instalado.",
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "disabled": true
+    },
+    "git": {
+      "command": "uvx",
+      "args": ["mcp-server-git", "--repository", "."],
+      "disabled": true
+    }
+  }
+}
