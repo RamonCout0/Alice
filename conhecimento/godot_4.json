@@ -1,6 +1,6 @@
 {
   "versao_alvo": "Godot 4.7",
-  "descricao": "Biblioteca de padrões (blocos Lego) de GDScript correto e validado. A Alice busca aqui e ADAPTA, em vez de inventar do zero.",
+  "descricao": "Biblioteca de padrões (blocos Lego) de GDScript correto e validado (cada bloco compila no Godot 4.7). A Alice busca aqui e ADAPTA, em vez de inventar do zero.",
   "padroes": [
     {
       "id": "movimento_plataforma_2d",
@@ -19,6 +19,54 @@
       "notas": "Input.get_vector já normaliza a diagonal. Sem gravidade em top-down."
     },
     {
+      "id": "pulo_duplo",
+      "titulo": "Pulo duplo (double jump)",
+      "quando_usar": "plataforma onde o player pode pular uma segunda vez no ar",
+      "tags": ["pulo", "double jump", "pulo duplo", "plataforma", "ar"],
+      "codigo": "extends CharacterBody2D\n\n@export var speed: float = 300.0\n@export var jump_velocity: float = -450.0\n@export var max_pulos: int = 2\nvar _pulos: int = 0\n\nfunc _physics_process(delta: float) -> void:\n\tif not is_on_floor():\n\t\tvelocity += get_gravity() * delta\n\telse:\n\t\t_pulos = 0\n\tif Input.is_action_just_pressed(\"jump\") and _pulos < max_pulos:\n\t\tvelocity.y = jump_velocity\n\t\t_pulos += 1\n\tvelocity.x = Input.get_axis(\"move_left\", \"move_right\") * speed\n\tmove_and_slide()\n",
+      "notas": "Zera o contador ao tocar o chão. max_pulos=2 dá o pulo duplo."
+    },
+    {
+      "id": "dash_2d",
+      "titulo": "Dash (arranco) com duração e recarga",
+      "quando_usar": "player que dá um arranco rápido numa direção, com cooldown",
+      "tags": ["dash", "arranco", "movimento", "cooldown", "velocidade"],
+      "codigo": "extends CharacterBody2D\n\n@export var speed: float = 300.0\n@export var dash_speed: float = 900.0\n@export var dash_time: float = 0.15\n@export var dash_cd: float = 0.6\nvar _dash_t: float = 0.0\nvar _cd_t: float = 0.0\nvar _dir_dash := Vector2.RIGHT\n\nfunc _physics_process(delta: float) -> void:\n\t_cd_t = maxf(0.0, _cd_t - delta)\n\tvar dir := Input.get_vector(\"move_left\", \"move_right\", \"move_up\", \"move_down\")\n\tif Input.is_action_just_pressed(\"dash\") and _cd_t == 0.0:\n\t\t_dash_t = dash_time\n\t\t_cd_t = dash_cd\n\t\t_dir_dash = dir if dir != Vector2.ZERO else velocity.normalized()\n\tif _dash_t > 0.0:\n\t\t_dash_t -= delta\n\t\tvelocity = _dir_dash * dash_speed\n\telse:\n\t\tvelocity = dir * speed\n\tmove_and_slide()\n",
+      "notas": "Enquanto _dash_t > 0 a velocidade é fixa na direção do dash. maxf() evita cooldown negativo."
+    },
+    {
+      "id": "wall_slide_jump",
+      "titulo": "Deslizar na parede e pulo de parede (wall jump)",
+      "quando_usar": "plataforma onde o player agarra/desliza na parede e pula dela",
+      "tags": ["parede", "wall jump", "wall slide", "plataforma", "escalar"],
+      "codigo": "extends CharacterBody2D\n\n@export var speed: float = 300.0\n@export var jump_velocity: float = -450.0\n@export var wall_slide_speed: float = 80.0\n@export var wall_push: float = 300.0\n\nfunc _physics_process(delta: float) -> void:\n\tvar dir := Input.get_axis(\"move_left\", \"move_right\")\n\tvar na_parede := is_on_wall_only()\n\tif not is_on_floor():\n\t\tvelocity += get_gravity() * delta\n\t\tif na_parede and velocity.y > 0.0:\n\t\t\tvelocity.y = minf(velocity.y, wall_slide_speed)\n\tif Input.is_action_just_pressed(\"jump\"):\n\t\tif is_on_floor():\n\t\t\tvelocity.y = jump_velocity\n\t\telif na_parede:\n\t\t\tvelocity.y = jump_velocity\n\t\t\tvelocity.x = -get_wall_normal().x * wall_push\n\tvelocity.x = move_toward(velocity.x, dir * speed, speed)\n\tmove_and_slide()\n",
+      "notas": "is_on_wall_only() e get_wall_normal() são do CharacterBody2D. O pulo de parede empurra na direção oposta à parede."
+    },
+    {
+      "id": "knockback",
+      "titulo": "Knockback (empurrão ao tomar dano)",
+      "quando_usar": "empurrar um corpo para trás quando ele é atingido",
+      "tags": ["knockback", "empurrao", "dano", "impacto", "recuo"],
+      "codigo": "extends CharacterBody2D\n\n@export var friccao: float = 1200.0\nvar _knock := Vector2.ZERO\n\nfunc aplicar_knockback(origem: Vector2, forca: float) -> void:\n\t_knock = (global_position - origem).normalized() * forca\n\nfunc _physics_process(delta: float) -> void:\n\t_knock = _knock.move_toward(Vector2.ZERO, friccao * delta)\n\tvelocity = _knock\n\tmove_and_slide()\n",
+      "notas": "Chame aplicar_knockback(posicao_do_atacante, forca) ao levar o golpe. A fricção reduz o empurrão suavemente."
+    },
+    {
+      "id": "inimigo_persegue",
+      "titulo": "Inimigo persegue o player",
+      "quando_usar": "inimigo que anda em direção a um alvo (o player)",
+      "tags": ["inimigo", "ia", "perseguir", "chase", "alvo", "topdown"],
+      "codigo": "extends CharacterBody2D\n\n@export var speed: float = 140.0\n@export var alvo_path: NodePath\n@onready var _alvo: Node2D = get_node_or_null(alvo_path)\n\nfunc _physics_process(_delta: float) -> void:\n\tif _alvo == null:\n\t\treturn\n\tvar dir := (_alvo.global_position - global_position).normalized()\n\tvelocity = dir * speed\n\tmove_and_slide()\n",
+      "notas": "Arraste o player no campo 'alvo_path' no inspetor. get_node_or_null evita erro se o alvo não existir."
+    },
+    {
+      "id": "inimigo_patrulha",
+      "titulo": "Inimigo patrulha entre dois pontos",
+      "quando_usar": "inimigo que anda de um lado pro outro entre marcadores",
+      "tags": ["inimigo", "patrulha", "patrol", "ia", "ida e volta"],
+      "codigo": "extends CharacterBody2D\n\n@export var speed: float = 100.0\n@export var ponto_a: Vector2\n@export var ponto_b: Vector2\nvar _destino := Vector2.ZERO\n\nfunc _ready() -> void:\n\t_destino = ponto_b\n\nfunc _physics_process(_delta: float) -> void:\n\tif global_position.distance_to(_destino) < 4.0:\n\t\t_destino = ponto_a if _destino == ponto_b else ponto_b\n\tvelocity = (_destino - global_position).normalized() * speed\n\tmove_and_slide()\n",
+      "notas": "Defina ponto_a e ponto_b (em coordenadas globais) no inspetor. Alterna o destino ao chegar."
+    },
+    {
       "id": "sinal_declarar_emitir",
       "titulo": "Sinal: declarar, emitir e conectar",
       "quando_usar": "desacoplar sistemas: um nó avisa que algo aconteceu e outros reagem",
@@ -35,6 +83,14 @@
       "notas": "Autoload é um Node único e global. Acesse pelo nome do autoload em qualquer lugar, sem get_node."
     },
     {
+      "id": "game_manager",
+      "titulo": "GameManager global (pontos, estado, autoload)",
+      "quando_usar": "guardar pontuação, recorde e estado do jogo acessível de qualquer cena",
+      "tags": ["gamemanager", "autoload", "pontos", "score", "estado", "global", "recorde"],
+      "codigo": "extends Node\n# Registrar como autoload 'Game'.\n\nsignal pontos_mudou(total: int)\n\nvar pontos: int = 0\nvar recorde: int = 0\n\nfunc adicionar_pontos(qtd: int) -> void:\n\tpontos += qtd\n\trecorde = max(recorde, pontos)\n\tpontos_mudou.emit(pontos)\n\nfunc reiniciar() -> void:\n\tpontos = 0\n\tpontos_mudou.emit(pontos)\n",
+      "notas": "Como autoload, qualquer script faz Game.adicionar_pontos(10). Conecte a HUD ao sinal pontos_mudou."
+    },
+    {
       "id": "sistema_vida",
       "titulo": "Sistema de vida (dano, cura, morte com sinal)",
       "quando_usar": "qualquer entidade que tem vida, toma dano e pode morrer",
@@ -43,12 +99,36 @@
       "notas": "clampi() para inteiros (clampf para float). class_name deixa reutilizar como componente."
     },
     {
+      "id": "iframes",
+      "titulo": "Invencibilidade temporária (i-frames) ao tomar dano",
+      "quando_usar": "evitar tomar vários danos seguidos; piscar durante a invencibilidade",
+      "tags": ["invencibilidade", "iframes", "dano", "piscar", "imunidade"],
+      "codigo": "extends Node2D\n\n@export var tempo_invencivel: float = 0.8\nvar _inv: float = 0.0\n\nfunc _process(delta: float) -> void:\n\tif _inv > 0.0:\n\t\t_inv -= delta\n\t\tmodulate.a = 0.4 if int(_inv * 12) % 2 == 0 else 1.0\n\telse:\n\t\tmodulate.a = 1.0\n\nfunc tentar_dano(qtd: int) -> bool:\n\tif _inv > 0.0:\n\t\treturn false\n\t_inv = tempo_invencivel\n\treturn true\n",
+      "notas": "tentar_dano retorna false se ainda invencível (ignora o golpe). O modulate.a pisca durante os i-frames."
+    },
+    {
       "id": "hitbox_area2d",
       "titulo": "Hitbox/Hurtbox com Area2D",
       "quando_usar": "detectar acerto de golpe/projétil: uma Area2D que percebe quando encosta em outra",
       "tags": ["hitbox", "hurtbox", "area2d", "colisao", "golpe", "ataque", "projetil", "dano"],
-      "codigo": "extends Area2D\n\n@export var dano: int = 10\n\nfunc _ready() -> void:\n\tbody_entered.connect(_ao_entrar_corpo)\n\tarea_entered.connect(_ao_entrar_area)\n\nfunc _ao_entrar_corpo(corpo: Node2D) -> void:\n\tif corpo.has_method(\"receber_dano\"):\n\t\tcorpo.receber_dano(dano)\n\nfunc _ao_entrar_area(area: Area2D) -> void:\n\tpass\n",
+      "codigo": "extends Area2D\n\n@export var dano: int = 10\n\nfunc _ready() -> void:\n\tbody_entered.connect(_ao_entrar_corpo)\n\tarea_entered.connect(_ao_entrar_area)\n\nfunc _ao_entrar_corpo(corpo: Node2D) -> void:\n\tif corpo.has_method(\"receber_dano\"):\n\t\tcorpo.receber_dano(dano)\n\nfunc _ao_entrar_area(_area: Area2D) -> void:\n\tpass\n",
       "notas": "Use has_method antes de chamar, pra não quebrar se o alvo não tiver o método. Configure as camadas/máscaras de colisão no inspetor."
+    },
+    {
+      "id": "projetil_2d",
+      "titulo": "Projétil que anda reto e some sozinho",
+      "quando_usar": "bala/flecha que viaja numa direção e se destrói ao acertar ou após um tempo",
+      "tags": ["projetil", "bala", "tiro", "flecha", "movimento", "vida util"],
+      "codigo": "extends Area2D\n\n@export var speed: float = 600.0\n@export var dano: int = 10\n@export var vida_util: float = 3.0\nvar direcao := Vector2.RIGHT\n\nfunc _ready() -> void:\n\tbody_entered.connect(_ao_acertar)\n\tget_tree().create_timer(vida_util).timeout.connect(queue_free)\n\nfunc _process(delta: float) -> void:\n\tglobal_position += direcao * speed * delta\n\nfunc _ao_acertar(corpo: Node2D) -> void:\n\tif corpo.has_method(\"receber_dano\"):\n\t\tcorpo.receber_dano(dano)\n\tqueue_free()\n",
+      "notas": "Defina 'direcao' ao instanciar. O timer garante que a bala some mesmo se não acertar nada."
+    },
+    {
+      "id": "atirar_projetil",
+      "titulo": "Atirar projétil na direção do mouse",
+      "quando_usar": "player/torre que instancia uma bala e a lança em direção ao cursor",
+      "tags": ["atirar", "tiro", "instanciar", "spawn", "bala", "mouse", "packedscene"],
+      "codigo": "extends Node2D\n\n@export var bala_cena: PackedScene\n\nfunc _unhandled_input(evento: InputEvent) -> void:\n\tif evento.is_action_pressed(\"attack\") and bala_cena:\n\t\tvar bala := bala_cena.instantiate()\n\t\tbala.global_position = global_position\n\t\tif \"direcao\" in bala:\n\t\t\tbala.direcao = (get_global_mouse_position() - global_position).normalized()\n\t\tget_tree().current_scene.add_child(bala)\n",
+      "notas": "Arraste a cena da bala em 'bala_cena'. Adiciona na current_scene pra não virar filha do atirador (senão anda junto)."
     },
     {
       "id": "maquina_estados_simples",
@@ -59,12 +139,188 @@
       "notas": "Para bosses/IA maiores, cada estado pode virar um nó filho próprio; este é o padrão simples e suficiente pra começar."
     },
     {
+      "id": "boss_fases",
+      "titulo": "Boss com fases por porcentagem de vida",
+      "quando_usar": "boss que muda de comportamento quando a vida cai abaixo de limiares",
+      "tags": ["boss", "fases", "phase", "vida", "dificuldade", "ia"],
+      "codigo": "extends Node\n\nsignal fase_mudou(fase: int)\n\n@export var vida_maxima: int = 300\nvar vida: int\nvar fase: int = 1\n\nfunc _ready() -> void:\n\tvida = vida_maxima\n\nfunc receber_dano(qtd: int) -> void:\n\tvida = max(0, vida - qtd)\n\tvar frac := float(vida) / float(vida_maxima)\n\tvar nova_fase := 3 if frac <= 0.33 else (2 if frac <= 0.66 else 1)\n\tif nova_fase != fase:\n\t\tfase = nova_fase\n\t\tfase_mudou.emit(fase)\n",
+      "notas": "Conecte 'fase_mudou' pra trocar ataques/velocidade. Divida com float() pra não fazer divisão inteira."
+    },
+    {
       "id": "cooldown_timer",
       "titulo": "Cooldown / tempo de recarga (dash, ataque)",
       "quando_usar": "impedir repetir uma ação antes de recarregar (dash, tiro, ataque especial)",
       "tags": ["cooldown", "recarga", "timer", "dash", "tempo", "delay"],
       "codigo": "extends Node\n\n@export var cooldown: float = 0.5\nvar _tempo_restante: float = 0.0\n\nfunc _process(delta: float) -> void:\n\tif _tempo_restante > 0.0:\n\t\t_tempo_restante -= delta\n\nfunc pronto() -> bool:\n\treturn _tempo_restante <= 0.0\n\nfunc usar() -> bool:\n\tif not pronto():\n\t\treturn false\n\t_tempo_restante = cooldown\n\treturn true\n",
       "notas": "Chame usar() ao acionar a ação; se voltar false, ainda está recarregando. Alternativa: nó Timer com one_shot."
+    },
+    {
+      "id": "timer_node_repetido",
+      "titulo": "Timer que dispara repetidamente",
+      "quando_usar": "fazer algo a cada X segundos (spawnar, regenerar, tick)",
+      "tags": ["timer", "repetir", "intervalo", "tick", "tempo"],
+      "codigo": "extends Node\n\n@export var intervalo: float = 1.0\n\nfunc _ready() -> void:\n\tvar t := Timer.new()\n\tt.wait_time = intervalo\n\tt.autostart = true\n\tadd_child(t)\n\tt.timeout.connect(_ao_tick)\n\nfunc _ao_tick() -> void:\n\tprint(\"tick\")\n",
+      "notas": "Timer criado por código; autostart faz começar sozinho. Para uma vez só, use one_shot=true."
+    },
+    {
+      "id": "espera_await",
+      "titulo": "Esperar um tempo sem travar (await)",
+      "quando_usar": "pausar uma corrotina por X segundos (combo, delay de ataque, sequência)",
+      "tags": ["await", "esperar", "delay", "corrotina", "tempo", "sequencia"],
+      "codigo": "extends Node\n\nfunc sequencia() -> void:\n\tprint(\"comeca\")\n\tawait get_tree().create_timer(1.0).timeout\n\tprint(\"depois de 1s\")\n\tawait get_tree().create_timer(0.5).timeout\n\tprint(\"depois de mais 0.5s\")\n",
+      "notas": "await get_tree().create_timer(t).timeout pausa só essa função, sem travar o jogo."
+    },
+    {
+      "id": "flash_dano",
+      "titulo": "Piscar branco/vermelho ao tomar dano (feedback)",
+      "quando_usar": "dar feedback visual quando algo é atingido",
+      "tags": ["flash", "piscar", "dano", "feedback", "modulate", "juice"],
+      "codigo": "extends Node2D\n\nfunc piscar(cor: Color = Color(1, 0.4, 0.4)) -> void:\n\tmodulate = cor\n\tawait get_tree().create_timer(0.08).timeout\n\tmodulate = Color.WHITE\n",
+      "notas": "modulate tinge o nó e seus filhos. Bom pra chamar dentro de receber_dano()."
+    },
+    {
+      "id": "tween_punch",
+      "titulo": "Tween de 'punch' (escala que estica e volta) — juice",
+      "quando_usar": "dar peso a um pulo, acerto ou clique fazendo o nó dar uma esticada",
+      "tags": ["tween", "juice", "escala", "punch", "feel", "animacao", "feedback"],
+      "codigo": "extends Node2D\n\nfunc punch(intensidade: float = 0.25) -> void:\n\tvar t := create_tween()\n\tt.tween_property(self, \"scale\", Vector2.ONE * (1.0 + intensidade), 0.06)\n\tt.tween_property(self, \"scale\", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK)\n",
+      "notas": "create_tween() é método de Node. Encadeie tween_property; set_trans dá o efeito elástico."
+    },
+    {
+      "id": "camera_seguir_suave",
+      "titulo": "Camera2D seguindo com suavização",
+      "quando_usar": "câmera que acompanha o player de forma suave",
+      "tags": ["camera", "camera2d", "seguir", "follow", "suave", "smoothing"],
+      "codigo": "extends Camera2D\n\nfunc _ready() -> void:\n\tposition_smoothing_enabled = true\n\tposition_smoothing_speed = 5.0\n\tmake_current()\n",
+      "notas": "Deixe a Camera2D como filha do player, ou mova-a manualmente. position_smoothing_speed controla a suavidade."
+    },
+    {
+      "id": "screen_shake",
+      "titulo": "Screen shake (tremor de tela)",
+      "quando_usar": "sacudir a câmera em impactos/explosões",
+      "tags": ["screen shake", "tremor", "camera", "impacto", "explosao", "feel"],
+      "codigo": "extends Camera2D\n\nvar _trauma: float = 0.0\n@export var forca: float = 12.0\n\nfunc tremer(qtd: float = 0.6) -> void:\n\t_trauma = minf(1.0, _trauma + qtd)\n\nfunc _process(_delta: float) -> void:\n\tif _trauma > 0.0:\n\t\t_trauma = maxf(0.0, _trauma - 0.02)\n\t\tvar amt := _trauma * _trauma\n\t\toffset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * forca * amt\n\telse:\n\t\toffset = Vector2.ZERO\n",
+      "notas": "Chame tremer() no impacto. Usar trauma ao quadrado deixa o tremor mais natural (decai rápido)."
+    },
+    {
+      "id": "barra_vida_ui",
+      "titulo": "Barra de vida (ProgressBar) ligada a um sinal",
+      "quando_usar": "HUD que mostra a vida e atualiza quando ela muda",
+      "tags": ["hud", "barra", "vida", "progressbar", "ui", "interface"],
+      "codigo": "extends ProgressBar\n\nfunc _ready() -> void:\n\tmin_value = 0\n\nfunc atualizar(atual: int, maximo: int) -> void:\n\tmax_value = maximo\n\tvalue = atual\n",
+      "notas": "Conecte o sinal 'vida_alterada(atual, maximo)' do sistema de vida a este 'atualizar'."
+    },
+    {
+      "id": "hud_label_sinal",
+      "titulo": "Label da HUD que reage a um sinal (pontos)",
+      "quando_usar": "mostrar pontuação/contador que se atualiza sozinho",
+      "tags": ["hud", "label", "pontos", "score", "ui", "sinal"],
+      "codigo": "extends Label\n\nfunc _ready() -> void:\n\ttext = \"0\"\n\nfunc mostrar_pontos(total: int) -> void:\n\ttext = str(total)\n",
+      "notas": "Conecte 'pontos_mudou(total)' do GameManager a 'mostrar_pontos'. str() converte o int."
+    },
+    {
+      "id": "menu_principal",
+      "titulo": "Menu principal (botões Jogar/Sair)",
+      "quando_usar": "tela inicial com botões que começam o jogo ou fecham",
+      "tags": ["menu", "botao", "button", "ui", "jogar", "sair", "tela inicial"],
+      "codigo": "extends Control\n\n@export var cena_do_jogo: String = \"res://Main.tscn\"\n@onready var _jogar: Button = $Jogar\n@onready var _sair: Button = $Sair\n\nfunc _ready() -> void:\n\t_jogar.pressed.connect(_ao_jogar)\n\t_sair.pressed.connect(get_tree().quit)\n\nfunc _ao_jogar() -> void:\n\tget_tree().change_scene_to_file(cena_do_jogo)\n",
+      "notas": "Precisa de dois Button filhos chamados 'Jogar' e 'Sair'. change_scene_to_file troca a cena inteira."
+    },
+    {
+      "id": "pausa_jogo",
+      "titulo": "Pausar e despausar o jogo",
+      "quando_usar": "menu de pausa com uma tecla",
+      "tags": ["pausa", "pause", "menu", "esc", "parar"],
+      "codigo": "extends CanvasLayer\n\nfunc _ready() -> void:\n\tprocess_mode = Node.PROCESS_MODE_ALWAYS\n\tvisible = false\n\nfunc _unhandled_input(evento: InputEvent) -> void:\n\tif evento.is_action_pressed(\"ui_cancel\"):\n\t\tvar pausar := not get_tree().paused\n\t\tget_tree().paused = pausar\n\t\tvisible = pausar\n",
+      "notas": "PROCESS_MODE_ALWAYS faz o menu continuar recebendo input mesmo com o jogo pausado. get_tree().paused congela o resto."
+    },
+    {
+      "id": "troca_cena",
+      "titulo": "Trocar de cena",
+      "quando_usar": "ir pra outra fase/tela",
+      "tags": ["cena", "scene", "trocar", "mudar fase", "carregar"],
+      "codigo": "extends Node\n\nfunc ir_para(caminho: String) -> void:\n\tget_tree().change_scene_to_file(caminho)\n\nfunc reiniciar_fase() -> void:\n\tget_tree().reload_current_scene()\n",
+      "notas": "change_scene_to_file(\"res://...\") troca a cena; reload_current_scene() reinicia a atual (bom pra respawn)."
+    },
+    {
+      "id": "salvar_carregar_json",
+      "titulo": "Salvar e carregar dados em JSON",
+      "quando_usar": "guardar progresso/config num arquivo (user://) e ler de volta",
+      "tags": ["salvar", "carregar", "save", "load", "json", "fileaccess", "progresso"],
+      "codigo": "extends Node\n\nconst CAMINHO := \"user://save.json\"\n\nfunc salvar(dados: Dictionary) -> void:\n\tvar f := FileAccess.open(CAMINHO, FileAccess.WRITE)\n\tif f:\n\t\tf.store_string(JSON.stringify(dados))\n\nfunc carregar() -> Dictionary:\n\tif not FileAccess.file_exists(CAMINHO):\n\t\treturn {}\n\tvar f := FileAccess.open(CAMINHO, FileAccess.READ)\n\tvar dados = JSON.parse_string(f.get_as_text())\n\treturn dados if dados is Dictionary else {}\n",
+      "notas": "user:// é a pasta de saves do jogo (persistente). JSON.stringify/parse_string convertem Dictionary <-> texto."
+    },
+    {
+      "id": "tocar_som",
+      "titulo": "Tocar um efeito sonoro",
+      "quando_usar": "tocar um SFX (pulo, dano, coleta)",
+      "tags": ["som", "sfx", "audio", "audiostreamplayer", "efeito"],
+      "codigo": "extends Node\n\n@export var som: AudioStream\nvar _player: AudioStreamPlayer\n\nfunc _ready() -> void:\n\t_player = AudioStreamPlayer.new()\n\t_player.stream = som\n\tadd_child(_player)\n\nfunc tocar() -> void:\n\t_player.play()\n",
+      "notas": "Arraste um .wav/.ogg em 'som'. Use @export (não preload de caminho fixo) pra escolher no inspetor."
+    },
+    {
+      "id": "coletavel",
+      "titulo": "Item coletável (moeda) com Area2D",
+      "quando_usar": "moeda/item que some ao encostar e dá pontos",
+      "tags": ["coletavel", "moeda", "item", "pickup", "area2d", "pontos"],
+      "codigo": "extends Area2D\n\nsignal coletado(valor: int)\n@export var valor: int = 1\n\nfunc _ready() -> void:\n\tbody_entered.connect(_ao_encostar)\n\nfunc _ao_encostar(corpo: Node2D) -> void:\n\tif corpo.is_in_group(\"player\"):\n\t\tcoletado.emit(valor)\n\t\tqueue_free()\n",
+      "notas": "Marque o player no grupo 'player' (aba Node > Groups). Conecte 'coletado' ao GameManager pra somar pontos."
+    },
+    {
+      "id": "spawner",
+      "titulo": "Spawner (gera inimigos/itens em intervalo)",
+      "quando_usar": "criar cenas repetidamente ao longo do tempo",
+      "tags": ["spawner", "gerar", "spawn", "inimigos", "onda", "packedscene", "intervalo"],
+      "codigo": "extends Node2D\n\n@export var cena: PackedScene\n@export var intervalo: float = 2.0\n@export var raio: float = 300.0\n\nfunc _ready() -> void:\n\tvar t := Timer.new()\n\tt.wait_time = intervalo\n\tt.autostart = true\n\tadd_child(t)\n\tt.timeout.connect(_spawnar)\n\nfunc _spawnar() -> void:\n\tif cena == null:\n\t\treturn\n\tvar inst := cena.instantiate()\n\tinst.global_position = global_position + Vector2.RIGHT.rotated(randf() * TAU) * raio\n\tget_tree().current_scene.add_child(inst)\n",
+      "notas": "Instancia PackedScene e posiciona num ponto aleatório ao redor. TAU = 2*PI (volta completa)."
+    },
+    {
+      "id": "object_pool",
+      "titulo": "Object pool (reaproveitar nós em vez de criar/destruir)",
+      "quando_usar": "muitas balas/partículas: evita lag reciclando objetos",
+      "tags": ["pool", "object pool", "otimizacao", "balas", "reaproveitar", "performance"],
+      "codigo": "extends Node\n\n@export var cena: PackedScene\n@export var tamanho: int = 30\nvar _pool: Array[Node] = []\n\nfunc _ready() -> void:\n\tfor i in tamanho:\n\t\tvar n := cena.instantiate()\n\t\tn.set_process(false)\n\t\tn.hide()\n\t\tadd_child(n)\n\t\t_pool.append(n)\n\nfunc pegar() -> Node:\n\tfor n in _pool:\n\t\tif not n.visible:\n\t\t\tn.show()\n\t\t\tn.set_process(true)\n\t\t\treturn n\n\treturn null\n",
+      "notas": "Em vez de queue_free(), o objeto se esconde (hide + set_process(false)) e volta pro pool. pegar() reaproveita um livre."
+    },
+    {
+      "id": "mira_mouse",
+      "titulo": "Apontar/rotacionar em direção ao mouse",
+      "quando_usar": "arma/torre que aponta pro cursor",
+      "tags": ["mira", "mouse", "rotacao", "apontar", "look_at", "arma"],
+      "codigo": "extends Node2D\n\nfunc _process(_delta: float) -> void:\n\tlook_at(get_global_mouse_position())\n",
+      "notas": "look_at() gira o nó pra encarar um ponto global. get_global_mouse_position() dá a posição do cursor no mundo."
+    },
+    {
+      "id": "animacao_por_estado",
+      "titulo": "AnimatedSprite2D trocando animação por movimento",
+      "quando_usar": "trocar entre 'idle' e 'run' conforme o personagem anda",
+      "tags": ["animacao", "animatedsprite2d", "sprite", "idle", "run", "flip"],
+      "codigo": "extends AnimatedSprite2D\n\nfunc atualizar(vel: Vector2) -> void:\n\tif absf(vel.x) > 5.0:\n\t\tplay(\"run\")\n\t\tflip_h = vel.x < 0.0\n\telse:\n\t\tplay(\"idle\")\n",
+      "notas": "Chame atualizar(velocity) do player. Precisa de animações 'idle' e 'run' no SpriteFrames. flip_h vira o sprite."
+    },
+    {
+      "id": "particulas_oneshot",
+      "titulo": "Partículas de explosão (one-shot) que se limpam",
+      "quando_usar": "efeito de partícula que dispara uma vez e o nó some",
+      "tags": ["particulas", "gpuparticles2d", "explosao", "efeito", "oneshot", "vfx"],
+      "codigo": "extends GPUParticles2D\n\nfunc _ready() -> void:\n\tone_shot = true\n\temitting = true\n\tget_tree().create_timer(lifetime + 0.1).timeout.connect(queue_free)\n",
+      "notas": "one_shot emite uma única vez. O timer remove o nó depois que as partículas acabam (lifetime)."
+    },
+    {
+      "id": "random_gerador",
+      "titulo": "Números aleatórios (dado, sorteio, chance)",
+      "quando_usar": "sortear valores, direções, drops com probabilidade",
+      "tags": ["aleatorio", "random", "rng", "dado", "sorteio", "chance", "probabilidade"],
+      "codigo": "extends Node\n\nvar _rng := RandomNumberGenerator.new()\n\nfunc _ready() -> void:\n\t_rng.randomize()\n\nfunc dado() -> int:\n\treturn _rng.randi_range(1, 6)\n\nfunc chance(prob: float) -> bool:\n\treturn _rng.randf() < prob\n\nfunc item_aleatorio(lista: Array):\n\treturn lista[_rng.randi_range(0, lista.size() - 1)]\n",
+      "notas": "randomize() muda a semente. chance(0.25) dá 25% de true. Também existe Array.pick_random()."
+    },
+    {
+      "id": "grupo_nos",
+      "titulo": "Grupos: achar/avisar vários nós de uma vez",
+      "quando_usar": "aplicar algo a todos os inimigos, ou achar o player rápido",
+      "tags": ["grupo", "group", "inimigos", "call_group", "get_nodes_in_group"],
+      "codigo": "extends Node\n\nfunc congelar_inimigos() -> void:\n\tget_tree().call_group(\"inimigos\", \"set_physics_process\", false)\n\nfunc contar_inimigos() -> int:\n\treturn get_tree().get_nodes_in_group(\"inimigos\").size()\n\nfunc achar_player() -> Node:\n\treturn get_tree().get_first_node_in_group(\"player\")\n",
+      "notas": "Adicione os nós aos grupos (aba Node > Groups). call_group chama um método em todos de um grupo."
     }
   ]
 }
