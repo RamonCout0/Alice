@@ -142,7 +142,13 @@ class Agent:
 
             assistant = {"role": "assistant", "content": "" if tool_calls else content}
             if tool_calls:
-                assistant["tool_calls"] = tool_calls
+                # normaliza para dicts puros (os ToolCall do Ollama não são
+                # serializáveis em JSON, o que quebraria salvar o histórico)
+                assistant["tool_calls"] = [
+                    {"function": {"name": c["function"]["name"],
+                                  "arguments": c["function"]["arguments"] or {}}}
+                    for c in tool_calls
+                ]
             self.messages.append(assistant)
 
             if not tool_calls:
