@@ -5,10 +5,13 @@
 import os
 import re
 import glob
+import json
 import shutil
 import tempfile
 import pathlib
 import subprocess
+import urllib.parse
+import urllib.request
 
 _WORKDIR: pathlib.Path = pathlib.Path(".").resolve()
 _REFDIR: pathlib.Path | None = None  # projeto de referência (só leitura), se houver
@@ -225,6 +228,54 @@ def listar_referencia(path: str = ".") -> str:
     return "\n".join(itens) or "(vazio)"
 
 
+def _http_get(url: str, timeout: int = 20) -> str:
+    req = urllib.request.Request(url, headers={"User-Agent": "AliceBot/1.0 (Godot assistant)"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read(600000).decode("utf-8", errors="replace")
+
+
+def abrir_url(url: str) -> str:
+    """Baixa o conteúdo de uma URL (http/https) como texto pra você LER e aprender
+    como algo funciona: documentação da Godot, fórum, ou código cru de um
+    repositório (ex: um arquivo .gd no raw do GitHub). HTML vira texto simples.
+    Fluxo de aprendizado: abra a fonte → entenda → VALIDE com check_godot_syntax →
+    guarde com salvar_padrao pra nunca mais precisar pesquisar isso."""
+    if not url.startswith(("http://", "https://")):
+        return "URL inválida (use http:// ou https://)."
+    try:
+        bruto = _http_get(url)
+    except Exception as e:
+        return f"Erro ao abrir {url}: {e}"
+    if "<html" in bruto.lower() or "<body" in bruto.lower():
+        bruto = re.sub(r"(?is)<(script|style|nav|footer|header).*?</\1>", " ", bruto)
+        bruto = re.sub(r"(?s)<[^>]+>", " ", bruto)
+        bruto = re.sub(r"[ \t]{2,}", " ", bruto)
+        bruto = re.sub(r"\n\s*\n\s*\n+", "\n\n", bruto)
+    return bruto.strip()[:12000] or "(página vazia)"
+
+
+def buscar_asset_godot(consulta: str) -> str:
+    """Pesquisa na Asset Library OFICIAL da Godot plugins/assets prontos sobre o
+    que você precisa (ex: 'state machine', 'dialogue', 'inventory'). Retorna
+    título, licença e o link — depois use abrir_url pra ler os detalhes/código.
+    Bom pra aprender de fontes reais quando a biblioteca local não tem o padrão."""
+    url = ("https://godotengine.org/asset-library/api/asset?filter="
+           + urllib.parse.quote(consulta) + "&godot_version=4.3&max_results=6")
+    try:
+        dados = json.loads(_http_get(url))
+    except Exception as e:
+        return f"Erro na Asset Library: {e}"
+    res = dados.get("result", [])
+    if not res:
+        return f"Nenhum asset encontrado pra '{consulta}'."
+    linhas = []
+    for a in res:
+        aid = a.get("asset_id", "")
+        linhas.append(f"- {a.get('title', '?')} (licença {a.get('cost', '?')}) — "
+                      f"detalhes: https://godotengine.org/asset-library/api/asset/{aid}")
+    return "\n".join(linhas)
+
+
 def buscar_padrao(consulta: str) -> str:
     """Busca na BIBLIOTECA DE PADRÕES do Godot 4.7 blocos de código PRONTOS e
     corretos pra você ENCAIXAR (tipo Lego) em vez de escrever do zero. USE ISTO
@@ -385,4 +436,5 @@ def godot_screenshot(cena: str = "", frames: int = 90) -> str:
 LOCAL_TOOLS = [read_file, list_dir, write_file, editar_arquivo, search_code,
                run_command, check_godot_syntax, godot_project_info, godot_rodar,
                godot_screenshot, ler_referencia, listar_referencia,
-               buscar_padrao, listar_padroes, salvar_padrao, lembrar]
+               buscar_padrao, listar_padroes, salvar_padrao,
+               abrir_url, buscar_asset_godot, lembrar]
