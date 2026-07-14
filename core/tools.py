@@ -101,13 +101,15 @@ def write_file(path: str, content: str) -> str:
     return f"Arquivo salvo: {path} ({len(content)} caracteres)"
 
 
-def editar_arquivo(path: str, trecho_antigo: str, trecho_novo: str) -> str:
+def editar_arquivo(path: str, trecho_antigo: str, trecho_novo: str, todas: bool = False) -> str:
     """Edição CIRÚRGICA: troca um trecho EXATO de um arquivo por outro, sem
     reescrever o resto. Use isto (e não write_file) pra mudanças pequenas —
     corrigir uma linha, adicionar uma const, renomear algo. 'trecho_antigo'
     precisa aparecer EXATAMENTE UMA vez (copie do arquivo, com a indentação).
     Pra INSERIR algo novo, inclua uma linha vizinha existente no antigo e
-    repita ela + a nova linha no novo."""
+    repita ela + a nova linha no novo.
+    Se 'trecho_antigo' aparece VÁRIAS vezes (ex: renomear um identificador em
+    todo o arquivo), passe todas=true pra trocar TODAS as ocorrências de uma vez."""
     p = _safe(path)
     if _autoprotegido(p) and _sem_confirmacao_real():
         return "ERRO: autoproteção — não posso editar a minha própria pasta de instalação sem confirmação."
@@ -118,11 +120,11 @@ def editar_arquivo(path: str, trecho_antigo: str, trecho_novo: str) -> str:
     if n == 0:
         return ("Não achei o 'trecho_antigo' no arquivo. Copie um trecho EXATO "
                 "(com a mesma indentação) usando read_file antes.")
-    if n > 1:
-        return (f"'trecho_antigo' aparece {n} vezes — inclua mais linhas de "
-                "contexto pra ele ficar único.")
+    if n > 1 and not todas:
+        return (f"'trecho_antigo' aparece {n} vezes. Ou inclua mais linhas de "
+                "contexto pra ficar único, OU passe todas=true pra trocar todas.")
     p.write_text(conteudo.replace(trecho_antigo, trecho_novo), encoding="utf-8")
-    return f"Editado: {path} (1 trecho substituído)."
+    return f"Editado: {path} ({n} ocorrência(s) substituída(s))."
 
 
 def search_code(pattern: str, path: str = ".") -> str:
@@ -221,6 +223,43 @@ def listar_referencia(path: str = ".") -> str:
             continue
         itens.append(c.name + ("/" if c.is_dir() else ""))
     return "\n".join(itens) or "(vazio)"
+
+
+def buscar_padrao(consulta: str) -> str:
+    """Busca na BIBLIOTECA DE PADRÕES do Godot 4.7 blocos de código PRONTOS e
+    corretos pra você ENCAIXAR (tipo Lego) em vez de escrever do zero. USE ISTO
+    ANTES de escrever qualquer GDScript novo: descreva o que precisa (ex:
+    'movimento do player com pulo', 'sistema de vida', 'hitbox de golpe') e
+    adapte o bloco que vier. Isso evita erros e sintaxe antiga."""
+    from core import biblioteca
+    achados = biblioteca.buscar(consulta)
+    if not achados:
+        ids = ", ".join(i for i, _ in biblioteca.listar())
+        return f"Nenhum padrão casou com '{consulta}'. Padrões disponíveis: {ids}"
+    partes = []
+    for p in achados:
+        partes.append(
+            f"### {p['titulo']}\nquando usar: {p.get('quando_usar', '')}\n"
+            f"```gdscript\n{p['codigo']}\n```\nnotas: {p.get('notas', '')}"
+        )
+    return "\n\n".join(partes)
+
+
+def listar_padroes() -> str:
+    """Lista todos os padrões (blocos Lego) disponíveis na biblioteca Godot 4.7."""
+    from core import biblioteca
+    linhas = [f"- {i}: {t}" for i, t in biblioteca.listar()]
+    return "\n".join(linhas) or "(biblioteca vazia)"
+
+
+def salvar_padrao(titulo: str, quando_usar: str, codigo: str,
+                  tags: str = "", notas: str = "") -> str:
+    """Guarda um novo bloco na BIBLIOTECA DE PADRÕES pra reusar depois. Só salve
+    código que você JÁ VALIDOU com check_godot_syntax. 'tags' separadas por vírgula."""
+    from core import biblioteca
+    lista_tags = [t.strip() for t in (tags or "").split(",") if t.strip()]
+    ok = biblioteca.adicionar(titulo, quando_usar, codigo, lista_tags, notas)
+    return f"Padrão '{titulo}' salvo na biblioteca." if ok else "Já existe um padrão com esse título."
 
 
 def lembrar(fato: str, tag: str = "geral") -> str:
@@ -345,4 +384,5 @@ def godot_screenshot(cena: str = "", frames: int = 90) -> str:
 
 LOCAL_TOOLS = [read_file, list_dir, write_file, editar_arquivo, search_code,
                run_command, check_godot_syntax, godot_project_info, godot_rodar,
-               godot_screenshot, ler_referencia, listar_referencia, lembrar]
+               godot_screenshot, ler_referencia, listar_referencia,
+               buscar_padrao, listar_padroes, salvar_padrao, lembrar]

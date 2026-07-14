@@ -1,0 +1,70 @@
+{
+  "versao_alvo": "Godot 4.7",
+  "descricao": "Biblioteca de padrões (blocos Lego) de GDScript correto e validado. A Alice busca aqui e ADAPTA, em vez de inventar do zero.",
+  "padroes": [
+    {
+      "id": "movimento_plataforma_2d",
+      "titulo": "Movimento de personagem 2D (plataforma, com pulo)",
+      "quando_usar": "player ou inimigo que anda para os lados, cai com gravidade e pula; jogo de plataforma",
+      "tags": ["player", "movimento", "fisica", "pulo", "gravidade", "characterbody2d", "plataforma"],
+      "codigo": "extends CharacterBody2D\n\n@export var speed: float = 300.0\n@export var jump_velocity: float = -450.0\n\nfunc _physics_process(delta: float) -> void:\n\tif not is_on_floor():\n\t\tvelocity += get_gravity() * delta\n\tif Input.is_action_just_pressed(\"jump\") and is_on_floor():\n\t\tvelocity.y = jump_velocity\n\tvar dir := Input.get_axis(\"move_left\", \"move_right\")\n\tvelocity.x = dir * speed\n\tmove_and_slide()\n",
+      "notas": "Godot 4: 'velocity' é propriedade embutida do CharacterBody2D; 'move_and_slide()' NÃO recebe argumentos; 'get_gravity()' lê a gravidade do projeto."
+    },
+    {
+      "id": "movimento_topdown_2d",
+      "titulo": "Movimento top-down 2D (8 direções, sem gravidade)",
+      "quando_usar": "personagem visto de cima que anda nas 8 direções, tipo arena ou RPG",
+      "tags": ["player", "movimento", "topdown", "arena", "8 direcoes", "characterbody2d"],
+      "codigo": "extends CharacterBody2D\n\n@export var speed: float = 300.0\n\nfunc _physics_process(_delta: float) -> void:\n\tvar dir := Input.get_vector(\"move_left\", \"move_right\", \"move_up\", \"move_down\")\n\tvelocity = dir * speed\n\tmove_and_slide()\n",
+      "notas": "Input.get_vector já normaliza a diagonal. Sem gravidade em top-down."
+    },
+    {
+      "id": "sinal_declarar_emitir",
+      "titulo": "Sinal: declarar, emitir e conectar",
+      "quando_usar": "desacoplar sistemas: um nó avisa que algo aconteceu e outros reagem",
+      "tags": ["sinal", "signal", "evento", "emit", "connect", "desacoplar"],
+      "codigo": "extends Node\n\nsignal vida_mudou(atual: int, maximo: int)\n\nvar vida: int = 100\n\nfunc levar_dano(qtd: int) -> void:\n\tvida = max(0, vida - qtd)\n\tvida_mudou.emit(vida, 100)\n\nfunc _ready() -> void:\n\tvida_mudou.connect(_ao_mudar_vida)\n\nfunc _ao_mudar_vida(atual: int, maximo: int) -> void:\n\tprint(\"vida: %d/%d\" % [atual, maximo])\n",
+      "notas": "Godot 4: declare com 'signal nome(args)', dispare com 'nome.emit(args)' e conecte com 'nome.connect(callable)'. Evite o antigo emit_signal(\"nome\")."
+    },
+    {
+      "id": "autoload_barramento_eventos",
+      "titulo": "Autoload / singleton (barramento de eventos global)",
+      "quando_usar": "um EventBus/Manager global que qualquer cena acessa por nome (registrado em [autoload] no project.godot)",
+      "tags": ["autoload", "singleton", "eventbus", "manager", "global", "barramento"],
+      "codigo": "extends Node\n# Registrar em Project Settings > Autoload (ou [autoload] no project.godot)\n# como 'EventBus'. Aí qualquer script chama EventBus.algo_aconteceu.emit()\n\nsignal boss_derrotado(nome: String)\nsignal jogador_morreu\n\nfunc avisar_boss_derrotado(nome: String) -> void:\n\tboss_derrotado.emit(nome)\n",
+      "notas": "Autoload é um Node único e global. Acesse pelo nome do autoload em qualquer lugar, sem get_node."
+    },
+    {
+      "id": "sistema_vida",
+      "titulo": "Sistema de vida (dano, cura, morte com sinal)",
+      "quando_usar": "qualquer entidade que tem vida, toma dano e pode morrer",
+      "tags": ["vida", "health", "dano", "damage", "morte", "hp", "cura"],
+      "codigo": "extends Node\nclass_name Vida\n\nsignal vida_alterada(atual: int, maximo: int)\nsignal morreu\n\n@export var vida_maxima: int = 100\nvar vida_atual: int\n\nfunc _ready() -> void:\n\tvida_atual = vida_maxima\n\nfunc receber_dano(qtd: int) -> void:\n\tif vida_atual <= 0:\n\t\treturn\n\tvida_atual = clampi(vida_atual - qtd, 0, vida_maxima)\n\tvida_alterada.emit(vida_atual, vida_maxima)\n\tif vida_atual == 0:\n\t\tmorreu.emit()\n\nfunc curar(qtd: int) -> void:\n\tvida_atual = clampi(vida_atual + qtd, 0, vida_maxima)\n\tvida_alterada.emit(vida_atual, vida_maxima)\n",
+      "notas": "clampi() para inteiros (clampf para float). class_name deixa reutilizar como componente."
+    },
+    {
+      "id": "hitbox_area2d",
+      "titulo": "Hitbox/Hurtbox com Area2D",
+      "quando_usar": "detectar acerto de golpe/projétil: uma Area2D que percebe quando encosta em outra",
+      "tags": ["hitbox", "hurtbox", "area2d", "colisao", "golpe", "ataque", "projetil", "dano"],
+      "codigo": "extends Area2D\n\n@export var dano: int = 10\n\nfunc _ready() -> void:\n\tbody_entered.connect(_ao_entrar_corpo)\n\tarea_entered.connect(_ao_entrar_area)\n\nfunc _ao_entrar_corpo(corpo: Node2D) -> void:\n\tif corpo.has_method(\"receber_dano\"):\n\t\tcorpo.receber_dano(dano)\n\nfunc _ao_entrar_area(area: Area2D) -> void:\n\tpass\n",
+      "notas": "Use has_method antes de chamar, pra não quebrar se o alvo não tiver o método. Configure as camadas/máscaras de colisão no inspetor."
+    },
+    {
+      "id": "maquina_estados_simples",
+      "titulo": "Máquina de estados simples (enum + match)",
+      "quando_usar": "controlar comportamento por estado: parado, andando, atacando, morrendo (bosses, player)",
+      "tags": ["estado", "state machine", "maquina de estados", "enum", "boss", "ia", "comportamento"],
+      "codigo": "extends Node\n\nenum Estado { PARADO, ANDANDO, ATACANDO, MORRENDO }\nvar estado: Estado = Estado.PARADO\n\nfunc mudar_estado(novo: Estado) -> void:\n\tif estado == novo:\n\t\treturn\n\testado = novo\n\nfunc _process(_delta: float) -> void:\n\tmatch estado:\n\t\tEstado.PARADO:\n\t\t\tpass\n\t\tEstado.ANDANDO:\n\t\t\tpass\n\t\tEstado.ATACANDO:\n\t\t\tpass\n\t\tEstado.MORRENDO:\n\t\t\tpass\n",
+      "notas": "Para bosses/IA maiores, cada estado pode virar um nó filho próprio; este é o padrão simples e suficiente pra começar."
+    },
+    {
+      "id": "cooldown_timer",
+      "titulo": "Cooldown / tempo de recarga (dash, ataque)",
+      "quando_usar": "impedir repetir uma ação antes de recarregar (dash, tiro, ataque especial)",
+      "tags": ["cooldown", "recarga", "timer", "dash", "tempo", "delay"],
+      "codigo": "extends Node\n\n@export var cooldown: float = 0.5\nvar _tempo_restante: float = 0.0\n\nfunc _process(delta: float) -> void:\n\tif _tempo_restante > 0.0:\n\t\t_tempo_restante -= delta\n\nfunc pronto() -> bool:\n\treturn _tempo_restante <= 0.0\n\nfunc usar() -> bool:\n\tif not pronto():\n\t\treturn false\n\t_tempo_restante = cooldown\n\treturn true\n",
+      "notas": "Chame usar() ao acionar a ação; se voltar false, ainda está recarregando. Alternativa: nó Timer com one_shot."
+    }
+  ]
+}
