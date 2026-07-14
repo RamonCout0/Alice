@@ -28,11 +28,37 @@ from core.agent import Agent
 from core import tools, memory, longmemory
 
 # ------------------------------------------------------------------ estado
+import time
+from collections import deque
+
 cfg = load_config()
-tools.configure(workdir=cfg.workdir, confirm_cb=None, godot_bin=cfg.godot_bin)
+tools.configure(workdir=cfg.workdir, confirm_cb=None, godot_bin=cfg.godot_bin,
+                reference_dir=cfg.pasta_referencia)
 alice = Agent(cfg, build_system_prompt(cfg))
 conv_atual = memory.novo_id()          # id da conversa em andamento
 _lock = threading.Lock()               # uma geração por vez
+
+# ---- monitor de atividade (pra você VER que ela está trabalhando) --------
+_atividade = {"status": "ociosa", "detalhe": "", "desde": time.time(), "origem": ""}
+_ativ_log = deque(maxlen=40)
+
+
+def _atv(status: str, detalhe: str = "", origem: str = ""):
+    _atividade["status"] = status
+    _atividade["detalhe"] = detalhe
+    _atividade["desde"] = time.time()
+    if origem:
+        _atividade["origem"] = origem
+    if status != "ociosa":
+        _ativ_log.appendleft({"t": time.strftime("%H:%M:%S"),
+                              "status": status, "detalhe": detalhe,
+                              "origem": _atividade["origem"]})
+
+
+def _resumo_tool(dado) -> str:
+    nome, args = dado
+    resumo = ", ".join(f"{k}={str(v)[:40]}" for k, v in (args or {}).items())
+    return f"{nome}({resumo})"
 
 
 # ---- helpers de estado --------------------------------------------------
@@ -129,6 +155,21 @@ PAGINA = r"""<!doctype html>
         border-radius:8px; padding:7px 12px; font-size:.82rem; cursor:pointer; }
   .btn:hover{ border-color:var(--accent); }
 
+  /* -------- indicador de atividade (você vê que ela trabalha) -------- */
+  .pill{ display:flex; align-items:center; gap:7px; padding:5px 11px; border-radius:20px;
+         font-size:.8rem; cursor:pointer; border:1px solid var(--line); user-select:none; }
+  .pill .ponto{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .pill.ociosa{ color:var(--dim); } .pill.ociosa .ponto{ background:#5a6072; }
+  .pill.ativa{ color:#f0c274; border-color:#5a4a22; background:#2a2314; }
+  .pill.ativa .ponto{ background:#f0c274; animation:pulse 1s infinite; }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.25; } }
+  #ativPanel{ display:none; background:var(--panel); border-bottom:1px solid var(--line);
+              max-height:180px; overflow-y:auto; padding:8px 16px; font-family:ui-monospace,monospace;
+              font-size:.76rem; }
+  #ativPanel.aberto{ display:block; }
+  #ativPanel .ev{ padding:2px 0; color:var(--dim); }
+  #ativPanel .ev b{ color:#9fdcc0; font-weight:600; }
+
   #log{ flex:1; overflow-y:auto; padding:22px; display:flex; flex-direction:column; gap:14px; }
   .row{ display:flex; flex-direction:column; }
   .row.u{ align-items:flex-end; } .row.a{ align-items:flex-start; }
@@ -180,6 +221,9 @@ PAGINA = r"""<!doctype html>
     <header>
       <span class="titulo">🤖 Alice</span>
       <span class="dim" id="modelo"></span>
+      <div id="statusPill" class="pill ociosa" title="clique pra ver o histórico de atividade">
+        <span class="ponto"></span><span id="statusTxt">ociosa</span>
+      </div>
       <div class="grupo">
         <span class="dim">temp</span>
         <input type="range" id="temp" min="0.1" max="1.2" step="0.05">
@@ -191,6 +235,7 @@ PAGINA = r"""<!doctype html>
       </div>
     </header>
 
+    <div id="ativPanel"></div>
     <div id="log"></div>
 
     <footer>
@@ -338,6 +383,26 @@ $('addFato').onclick=async()=>{ const t=$('m_txt').value.trim(); if(!t) return;
   await post('/memoria_add',{texto:t,tag:$('m_tag').value.trim()||'geral'});
   $('m_txt').value=''; $('m_tag').value=''; pintarMemoria(); };
 
+/* ---- monitor de atividade: você sempre vê se ela está trabalhando ---- */
+const statusPill=$('statusPill'), statusTxt=$('statusTxt'), ativPanel=$('ativPanel');
+const rotulos={ociosa:'ociosa', pensando:'pensando…', escrevendo:'escrevendo…', ferramenta:'trabalhando'};
+statusPill.onclick=()=> ativPanel.classList.toggle('aberto');
+async function poll(){
+  try{
+    const a=await (await fetch('/atividade')).json();
+    const ativa = a.status!=='ociosa';
+    statusPill.className='pill '+(ativa?'ativa':'ociosa');
+    let txt = rotulos[a.status]||a.status;
+    if(a.status==='ferramenta' && a.detalhe) txt='⚙ '+a.detalhe;
+    if(ativa){ txt+=' · '+a.ha_seg+'s'; if(a.origem) txt+=' ('+a.origem+')'; }
+    statusTxt.textContent=txt;
+    ativPanel.innerHTML = (a.log||[]).map(e=>
+      `<div class="ev">${e.t} <b>${e.status}</b> ${(e.detalhe||'')} ${e.origem?'· '+e.origem:''}</div>`
+    ).join('') || '<div class="ev">(sem atividade ainda)</div>';
+  }catch(e){ statusPill.className='pill ociosa'; statusTxt.textContent='servidor off?'; }
+}
+setInterval(poll, 1200); poll();
+
 (async()=>{ await carregarEstado(); await carregarConversas(); entrada.focus(); })();
 </script>
 </body></html>
@@ -387,6 +452,13 @@ class Handler(BaseHTTPRequestHandler):
             self._json(d or {"messages": []})
         elif u.path == "/memoria":
             self._json(longmemory.carregar())
+        elif u.path == "/atividade":
+            self._json({
+                "status": _atividade["status"], "detalhe": _atividade["detalhe"],
+                "origem": _atividade["origem"],
+                "ha_seg": int(time.time() - _atividade["desde"]),
+                "log": list(_ativ_log)[:12],
+            })
         elif u.path == "/screenshot":
             self._servir_screenshot()
         elif u.path == "/chat":
@@ -446,15 +518,20 @@ class Handler(BaseHTTPRequestHandler):
         full = f"[Contexto do editor Godot — {contexto}]\n\n{msg}" if contexto else msg
         partes, ferramentas = [], []
         with _lock:
+            _atv("pensando", msg[:60], origem="editor (dock)")
             try:
                 for kind, dado in alice.stream(full):
                     if kind == "text":
                         partes.append(dado)
+                        _atv("escrevendo", origem="editor (dock)")
                     elif kind == "tool":
                         ferramentas.append(dado[0])
+                        _atv("ferramenta", _resumo_tool(dado), origem="editor (dock)")
                 _salvar_conversa_atual()
             except Exception as e:
+                _atv("ociosa")
                 self._json({"resposta": f"erro: {e}", "ferramentas": ferramentas}); return
+            _atv("ociosa")
         self._json({"resposta": "".join(partes).strip(), "ferramentas": ferramentas})
 
     # ---------------------------------------------------------------- chat SSE
@@ -472,15 +549,18 @@ class Handler(BaseHTTPRequestHandler):
         if not msg.strip():
             emit({"type": "done"}); return
         with _lock:
+            _atv("pensando", msg[:60], origem="interface web")
             try:
                 tirou_shot = False
                 for kind, dado in alice.stream(msg):
                     if kind == "text":
                         emit({"type": "text", "data": dado})
+                        _atv("escrevendo", origem="interface web")
                     elif kind == "tool":
                         nome, args = dado
                         resumo = ", ".join(f"{k}={str(v)[:60]}" for k, v in (args or {}).items())
                         emit({"type": "tool", "data": f"{nome}({resumo})"})
+                        _atv("ferramenta", _resumo_tool(dado), origem="interface web")
                         if nome == "godot_screenshot":
                             tirou_shot = True
                 # se ela renderizou um screenshot, manda a imagem pra UI exibir
@@ -488,10 +568,12 @@ class Handler(BaseHTTPRequestHandler):
                     mt = int(tools.ULTIMO_SCREENSHOT.stat().st_mtime)
                     emit({"type": "image", "data": f"/screenshot?t={mt}"})
                 _salvar_conversa_atual()
+                _atv("ociosa")
                 emit({"type": "done"})
             except BrokenPipeError:
-                pass
+                _atv("ociosa")
             except Exception as e:
+                _atv("ociosa")
                 try:
                     emit({"type": "error", "data": str(e)}); emit({"type": "done"})
                 except Exception:

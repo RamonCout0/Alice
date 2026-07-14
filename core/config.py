@@ -42,10 +42,14 @@ def load_personalidade() -> dict:
         return json.load(f)
 
 
-def build_system_prompt(cfg: Config) -> str:
-    """Junta a personalidade + guia de ferramentas + memória de longo prazo."""
+def build_system_prompt(cfg: Config, modo: str = "agente") -> str:
+    """Monta o system prompt. modo='agente' (web/plugin: personalidade completa +
+    guia de ferramentas) ou modo='conversa' (Discord: só a persona leve, sem o
+    despejo técnico, pra não ficar seca/repetitiva)."""
     from core import longmemory
     pers = load_personalidade()
+    if modo == "conversa" and pers.get("persona_discord"):
+        return pers["persona_discord"].strip() + longmemory.texto_para_prompt()
     guia = (
         "\n\nFERRAMENTAS DISPONÍVEIS: read_file (ler arquivo), list_dir (listar pasta), "
         "search_code (buscar texto/regex no código), write_file (criar arquivo NOVO ou "

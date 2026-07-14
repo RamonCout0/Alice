@@ -29,7 +29,7 @@ cfg = load_config()
 # MCP (filesystem/git) fica só na CLI de propósito — aqui as ferramentas locais já
 # bastam, e run_command é restrito ao owner (ver agente_de) por não ter confirmação.
 tools.configure(workdir=cfg.workdir, confirm_cb=None, godot_bin=cfg.godot_bin)
-SYSTEM = build_system_prompt(cfg)
+SYSTEM = build_system_prompt(cfg, modo="conversa")
 
 intents = discord.Intents.default()
 intents.message_content = True
