@@ -530,7 +530,7 @@ class Handler(BaseHTTPRequestHandler):
         elif u.path == "/screenshot":
             self._servir_screenshot()
         elif u.path == "/avatar":
-            self._servir_arquivo(AVATAR_PATH, "image/png")
+            self._servir_avatar()
         elif u.path == "/chat":
             self._chat((q.get("msg") or [""])[0])
         else:
@@ -538,6 +538,18 @@ class Handler(BaseHTTPRequestHandler):
 
     def _servir_screenshot(self):
         self._servir_arquivo(str(tools.ULTIMO_SCREENSHOT), "image/png")
+
+    def _servir_avatar(self):
+        import glob
+        mimes = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+                 "webp": "image/webp", "gif": "image/gif"}
+        pasta = os.path.dirname(AVATAR_PATH)
+        for ext, mime in mimes.items():
+            achados = sorted(glob.glob(os.path.join(pasta, "alice*." + ext)))
+            if achados:
+                self._servir_arquivo(achados[0], mime)
+                return
+        self.send_response(404); self.end_headers()
 
     def _servir_arquivo(self, caminho: str, tipo: str):
         if not os.path.isfile(caminho):
