@@ -38,6 +38,10 @@ alice = Agent(cfg, build_system_prompt(cfg))
 conv_atual = memory.novo_id()          # id da conversa em andamento
 _lock = threading.Lock()               # uma geração por vez
 
+# foto da Alice (avatar); coloque um alice.png aqui que a interface exibe
+AVATAR_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                           "assets", "alice.png")
+
 # ---- monitor de atividade (pra você VER que ela está trabalhando) --------
 _atividade = {"status": "ociosa", "detalhe": "", "desde": time.time(), "origem": ""}
 _ativ_log = deque(maxlen=40)
@@ -118,25 +122,65 @@ PAGINA = r"""<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Alice</title>
 <style>
-  :root{ --bg:#0e1016; --panel:#161923; --panel2:#1e2230; --panel3:#252a3a; --txt:#e6e8ee;
-         --dim:#8b90a0; --accent:#c084fc; --accent2:#a855f7; --user:#2a3350; --tool:#1c2e2a;
-         --line:#272c3a; --danger:#ef6b6b; }
+  /* ===== Tema "Alice no País das Maravilhas" ===== */
+  :root{
+    --bg:#0b1030; --bg2:#0a0d26;
+    --panel:#111a44; --panel2:#1a2660; --panel3:#243172;
+    --txt:#eef2ff; --dim:#93a2d6;
+    --accent:#5b8de0;            /* azul cornflower do vestido */
+    --accent2:#7aa8f0;
+    --gold:#e7c766; --gold2:#f3dc93;   /* cabelo / relógio */
+    --cream:#f4ecd6;             /* avental */
+    --heart:#e05673;            /* cartas de copas */
+    --user:#274088;              /* balão do usuário */
+    --tool:#12324a;
+    --line:rgba(231,199,102,.16); /* fio dourado */
+    --line2:rgba(122,168,240,.16);
+    --danger:#e05673;
+    --serif:Georgia,'Iowan Old Style','Times New Roman',serif;
+  }
   *{ box-sizing:border-box; }
   html,body{ margin:0; height:100%; }
-  body{ display:flex; font-family:system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg);
-        color:var(--txt); height:100vh; overflow:hidden; }
+  ::selection{ background:rgba(231,199,102,.3); }
+  body{ display:flex; font-family:system-ui,Segoe UI,Roboto,sans-serif; color:var(--txt);
+        height:100vh; overflow:hidden;
+        background:
+          radial-gradient(1100px 620px at 82% -12%, rgba(91,141,224,.22), transparent 60%),
+          radial-gradient(820px 520px at -5% 112%, rgba(231,199,102,.12), transparent 62%),
+          linear-gradient(158deg, var(--bg), var(--bg2)); }
+  /* barras de rolagem discretas */
+  *::-webkit-scrollbar{ width:9px; height:9px; }
+  *::-webkit-scrollbar-thumb{ background:rgba(122,168,240,.25); border-radius:10px; }
+  *::-webkit-scrollbar-thumb:hover{ background:rgba(231,199,102,.4); }
 
   /* -------- sidebar -------- */
-  #sidebar{ width:250px; background:var(--panel); border-right:1px solid var(--line);
-            display:flex; flex-direction:column; flex-shrink:0; }
-  #sidebar .topo{ padding:14px; border-bottom:1px solid var(--line); }
-  #novaConversa{ width:100%; background:var(--accent); color:#1a1024; border:none; border-radius:9px;
-                 padding:10px; font-weight:600; cursor:pointer; font-size:.9rem; }
+  #sidebar{ width:262px; background:linear-gradient(180deg, rgba(17,26,68,.92), rgba(10,13,38,.92));
+            border-right:1px solid var(--line); display:flex; flex-direction:column; flex-shrink:0;
+            backdrop-filter:blur(4px); }
+  #sidebar .topo{ padding:16px 14px; border-bottom:1px solid var(--line); }
+  .marca{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .foto{ position:relative; width:52px; height:52px; border-radius:50%; flex-shrink:0;
+         background:radial-gradient(circle at 35% 30%, var(--gold2), #b98f38);
+         box-shadow:0 0 0 2px var(--gold), 0 0 18px rgba(231,199,102,.4); overflow:hidden; }
+  .foto .ini{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+              font-family:var(--serif); font-size:1.7rem; font-weight:700; color:#3a2a08; }
+  .foto img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .marca .nome{ font-family:var(--serif); font-size:1.5rem; font-weight:700; letter-spacing:.5px;
+                background:linear-gradient(90deg, var(--gold2), var(--gold)); -webkit-background-clip:text;
+                background-clip:text; color:transparent; line-height:1; }
+  .marca .suits{ display:block; font-size:.72rem; letter-spacing:3px; margin-top:3px;
+                 color:var(--accent2); }
+  .marca .suits .h{ color:var(--heart); }
+  #novaConversa{ width:100%; background:linear-gradient(180deg, var(--gold2), var(--gold));
+                 color:#3a2a08; border:none; border-radius:11px; padding:11px; font-weight:700;
+                 cursor:pointer; font-size:.9rem; box-shadow:0 3px 12px rgba(231,199,102,.25);
+                 transition:transform .1s, box-shadow .2s; }
+  #novaConversa:hover{ transform:translateY(-1px); box-shadow:0 5px 16px rgba(231,199,102,.4); }
   #convs{ flex:1; overflow-y:auto; padding:8px; }
-  .conv{ padding:9px 10px; border-radius:8px; cursor:pointer; margin-bottom:4px; font-size:.86rem;
-         display:flex; flex-direction:column; gap:2px; }
-  .conv:hover{ background:var(--panel2); }
-  .conv.ativa{ background:var(--panel3); }
+  .conv{ padding:9px 11px; border-radius:9px; cursor:pointer; margin-bottom:4px; font-size:.86rem;
+         display:flex; flex-direction:column; gap:2px; border:1px solid transparent; }
+  .conv:hover{ background:rgba(122,168,240,.08); }
+  .conv.ativa{ background:rgba(91,141,224,.14); border-color:var(--line); }
   .conv .t{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .conv .d{ font-size:.7rem; color:var(--dim); }
   .conv .x{ float:right; color:var(--dim); font-size:.9rem; opacity:0; }
@@ -145,81 +189,105 @@ PAGINA = r"""<!doctype html>
 
   /* -------- área principal -------- */
   #main{ flex:1; display:flex; flex-direction:column; min-width:0; }
-  header{ display:flex; align-items:center; gap:14px; padding:10px 16px; background:var(--panel);
-          border-bottom:1px solid var(--line); flex-wrap:wrap; }
-  header .titulo{ font-weight:600; font-size:1.05rem; }
+  header{ display:flex; align-items:center; gap:14px; padding:11px 18px;
+          background:linear-gradient(180deg, rgba(17,26,68,.7), rgba(17,26,68,.35));
+          border-bottom:1px solid var(--line); flex-wrap:wrap;
+          box-shadow:0 1px 0 rgba(122,168,240,.08); }
+  header .titulo{ font-family:var(--serif); font-weight:700; font-size:1.35rem; letter-spacing:.5px;
+                  background:linear-gradient(90deg, var(--gold2), var(--gold)); -webkit-background-clip:text;
+                  background-clip:text; color:transparent; }
   header .dim{ color:var(--dim); font-size:.8rem; }
   header .grupo{ display:flex; align-items:center; gap:8px; }
-  header input[type=range]{ accent-color:var(--accent); }
-  .btn{ background:var(--panel2); color:var(--txt); border:1px solid var(--line);
-        border-radius:8px; padding:7px 12px; font-size:.82rem; cursor:pointer; }
-  .btn:hover{ border-color:var(--accent); }
+  header input[type=range]{ accent-color:var(--gold); }
+  .btn{ background:rgba(122,168,240,.1); color:var(--txt); border:1px solid var(--line);
+        border-radius:9px; padding:7px 12px; font-size:.82rem; cursor:pointer; transition:.15s; }
+  .btn:hover{ border-color:var(--gold); background:rgba(231,199,102,.12); }
 
-  /* -------- indicador de atividade (você vê que ela trabalha) -------- */
-  .pill{ display:flex; align-items:center; gap:7px; padding:5px 11px; border-radius:20px;
+  /* -------- indicador de atividade -------- */
+  .pill{ display:flex; align-items:center; gap:7px; padding:5px 12px; border-radius:20px;
          font-size:.8rem; cursor:pointer; border:1px solid var(--line); user-select:none; }
   .pill .ponto{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
-  .pill.ociosa{ color:var(--dim); } .pill.ociosa .ponto{ background:#5a6072; }
-  .pill.ativa{ color:#f0c274; border-color:#5a4a22; background:#2a2314; }
-  .pill.ativa .ponto{ background:#f0c274; animation:pulse 1s infinite; }
+  .pill.ociosa{ color:var(--dim); } .pill.ociosa .ponto{ background:#5a6698; }
+  .pill.ativa{ color:var(--gold2); border-color:rgba(231,199,102,.4);
+               background:rgba(231,199,102,.12); }
+  .pill.ativa .ponto{ background:var(--gold); box-shadow:0 0 8px var(--gold); animation:pulse 1s infinite; }
   @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.25; } }
-  #ativPanel{ display:none; background:var(--panel); border-bottom:1px solid var(--line);
-              max-height:180px; overflow-y:auto; padding:8px 16px; font-family:ui-monospace,monospace;
+  #ativPanel{ display:none; background:rgba(10,13,38,.6); border-bottom:1px solid var(--line);
+              max-height:180px; overflow-y:auto; padding:8px 18px; font-family:ui-monospace,monospace;
               font-size:.76rem; }
   #ativPanel.aberto{ display:block; }
   #ativPanel .ev{ padding:2px 0; color:var(--dim); }
-  #ativPanel .ev b{ color:#9fdcc0; font-weight:600; }
+  #ativPanel .ev b{ color:var(--gold2); font-weight:600; }
 
-  #log{ flex:1; overflow-y:auto; padding:22px; display:flex; flex-direction:column; gap:14px; }
+  #log{ flex:1; overflow-y:auto; padding:24px; display:flex; flex-direction:column; gap:15px; }
   .row{ display:flex; flex-direction:column; }
   .row.u{ align-items:flex-end; } .row.a{ align-items:flex-start; }
-  .msg{ max-width:82%; padding:11px 14px; border-radius:12px; white-space:pre-wrap;
-        word-wrap:break-word; line-height:1.5; font-size:.95rem; }
-  .u .msg{ background:var(--user); border-bottom-right-radius:3px; }
-  .a .msg{ background:var(--panel2); border-bottom-left-radius:3px; }
-  .tool{ align-self:flex-start; background:var(--tool); color:#9fdcc0; font-family:ui-monospace,monospace;
-         font-size:.78rem; padding:6px 10px; border-radius:8px; max-width:82%; }
-  .autor{ font-size:.72rem; color:var(--dim); margin:0 6px 4px; }
+  .msg{ max-width:82%; padding:12px 15px; border-radius:15px; white-space:pre-wrap;
+        word-wrap:break-word; line-height:1.55; font-size:.95rem; box-shadow:0 2px 10px rgba(0,0,0,.2); }
+  .u .msg{ background:linear-gradient(180deg, var(--user), #1d3068); border:1px solid var(--line2);
+           border-bottom-right-radius:4px; }
+  .a .msg{ background:linear-gradient(180deg, var(--panel2), var(--panel)); border:1px solid var(--line);
+           border-bottom-left-radius:4px; }
+  .tool{ align-self:flex-start; background:rgba(122,168,240,.1); color:var(--accent2);
+         border:1px solid var(--line2); font-family:ui-monospace,monospace;
+         font-size:.78rem; padding:6px 11px; border-radius:9px; max-width:82%; }
+  .autor{ font-size:.72rem; color:var(--gold); font-family:var(--serif); font-style:italic;
+          margin:0 8px 4px; }
   .shot{ align-self:flex-start; max-width:82%; }
   .shot .cap{ font-size:.72rem; color:var(--dim); margin:0 4px 5px; }
-  .shot img{ max-width:100%; border-radius:10px; border:1px solid var(--line); display:block; }
-  footer{ display:flex; gap:10px; padding:14px 16px; background:var(--panel); border-top:1px solid var(--line); }
-  #entrada{ flex:1; resize:none; background:var(--panel2); color:var(--txt); border:1px solid var(--line);
-            border-radius:10px; padding:11px 13px; font-size:.95rem; font-family:inherit; max-height:170px; }
-  #enviar{ background:var(--accent); color:#1a1024; border:none; border-radius:10px; padding:0 22px;
-           font-weight:600; cursor:pointer; font-size:.95rem; }
-  #enviar:disabled{ opacity:.5; cursor:default; }
-  .piscando::after{ content:"▋"; animation:blink 1s steps(2) infinite; color:var(--accent); }
+  .shot img{ max-width:100%; border-radius:12px; border:2px solid var(--gold); display:block;
+             box-shadow:0 4px 20px rgba(231,199,102,.2); }
+  footer{ display:flex; gap:10px; padding:15px 18px;
+          background:linear-gradient(180deg, rgba(17,26,68,.35), rgba(17,26,68,.7));
+          border-top:1px solid var(--line); }
+  #entrada{ flex:1; resize:none; background:rgba(10,13,38,.55); color:var(--txt);
+            border:1px solid var(--line2); border-radius:12px; padding:12px 14px; font-size:.95rem;
+            font-family:inherit; max-height:170px; transition:border-color .15s; }
+  #entrada:focus{ outline:none; border-color:var(--gold); }
+  #enviar{ background:linear-gradient(180deg, var(--gold2), var(--gold)); color:#3a2a08; border:none;
+           border-radius:12px; padding:0 24px; font-weight:700; cursor:pointer; font-size:.95rem;
+           box-shadow:0 3px 12px rgba(231,199,102,.25); transition:transform .1s; }
+  #enviar:hover:not(:disabled){ transform:translateY(-1px); }
+  #enviar:disabled{ opacity:.45; cursor:default; }
+  .piscando::after{ content:"▋"; animation:blink 1s steps(2) infinite; color:var(--gold); }
   @keyframes blink{ 50%{ opacity:0; } }
 
   /* -------- modais -------- */
-  .overlay{ position:fixed; inset:0; background:rgba(0,0,0,.55); display:none;
-            align-items:center; justify-content:center; z-index:10; }
+  .overlay{ position:fixed; inset:0; background:rgba(6,9,26,.68); display:none;
+            align-items:center; justify-content:center; z-index:10; backdrop-filter:blur(3px); }
   .overlay.on{ display:flex; }
-  .modal{ background:var(--panel); border:1px solid var(--line); border-radius:14px; width:min(560px,92vw);
-          max-height:86vh; overflow-y:auto; padding:22px; }
-  .modal h2{ margin:0 0 16px; font-size:1.15rem; }
+  .modal{ background:linear-gradient(160deg, var(--panel), var(--bg2));
+          border:1px solid var(--line); border-radius:16px; width:min(560px,92vw);
+          max-height:86vh; overflow-y:auto; padding:24px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  .modal h2{ margin:0 0 16px; font-size:1.25rem; font-family:var(--serif); color:var(--gold2); }
   .campo{ margin-bottom:14px; }
   .campo label{ display:block; font-size:.8rem; color:var(--dim); margin-bottom:5px; }
-  .campo input[type=text], .campo input[type=number]{ width:100%; background:var(--panel2); color:var(--txt);
-          border:1px solid var(--line); border-radius:8px; padding:9px 11px; font-size:.9rem; }
+  .campo input[type=text], .campo input[type=number]{ width:100%; background:rgba(10,13,38,.55); color:var(--txt);
+          border:1px solid var(--line2); border-radius:9px; padding:10px 12px; font-size:.9rem; }
+  .campo input:focus{ outline:none; border-color:var(--gold); }
   .campo.linha{ display:flex; align-items:center; gap:8px; }
   .modal .rodape{ display:flex; justify-content:flex-end; gap:10px; margin-top:8px; }
-  .fato{ background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:9px 11px;
+  .fato{ background:rgba(10,13,38,.5); border:1px solid var(--line); border-radius:9px; padding:10px 12px;
          margin-bottom:8px; display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
-  .fato .tag{ font-size:.68rem; color:var(--accent); text-transform:uppercase; }
+  .fato .tag{ font-size:.68rem; color:var(--gold); text-transform:uppercase; letter-spacing:.5px; }
   .fato .txt{ font-size:.88rem; flex:1; }
   .fato .del{ color:var(--dim); cursor:pointer; } .fato .del:hover{ color:var(--danger); }
 </style></head>
 <body>
   <div id="sidebar">
-    <div class="topo"><button id="novaConversa">+ nova conversa</button></div>
+    <div class="topo">
+      <div class="marca">
+        <div class="foto"><span class="ini">A</span><img id="avatar" src="/avatar" alt="" onerror="this.remove()"></div>
+        <div><div class="nome">Alice</div><span class="suits"><span class="h">♥</span> ♠ <span class="h">♦</span> ♣</span></div>
+      </div>
+      <button id="novaConversa">✧ nova conversa</button>
+    </div>
     <div id="convs"></div>
   </div>
 
   <div id="main">
     <header>
-      <span class="titulo">🤖 Alice</span>
+      <span class="titulo">Alice</span><span style="color:var(--gold);font-size:1.1rem">🫖</span>
       <span class="dim" id="modelo"></span>
       <div id="statusPill" class="pill ociosa" title="clique pra ver o histórico de atividade">
         <span class="ponto"></span><span id="statusTxt">ociosa</span>
@@ -461,18 +529,23 @@ class Handler(BaseHTTPRequestHandler):
             })
         elif u.path == "/screenshot":
             self._servir_screenshot()
+        elif u.path == "/avatar":
+            self._servir_arquivo(AVATAR_PATH, "image/png")
         elif u.path == "/chat":
             self._chat((q.get("msg") or [""])[0])
         else:
             self.send_response(404); self.end_headers()
 
     def _servir_screenshot(self):
-        p = tools.ULTIMO_SCREENSHOT
-        if not p.is_file():
+        self._servir_arquivo(str(tools.ULTIMO_SCREENSHOT), "image/png")
+
+    def _servir_arquivo(self, caminho: str, tipo: str):
+        if not os.path.isfile(caminho):
             self.send_response(404); self.end_headers(); return
-        dados = p.read_bytes()
+        with open(caminho, "rb") as f:
+            dados = f.read()
         self.send_response(200)
-        self.send_header("Content-Type", "image/png")
+        self.send_header("Content-Type", tipo)
         self.send_header("Cache-Control", "no-cache")
         self.send_header("Content-Length", str(len(dados)))
         self.end_headers()
