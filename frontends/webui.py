@@ -137,6 +137,9 @@ PAGINA = r"""<!doctype html>
   .tool{ align-self:flex-start; background:var(--tool); color:#9fdcc0; font-family:ui-monospace,monospace;
          font-size:.78rem; padding:6px 10px; border-radius:8px; max-width:82%; }
   .autor{ font-size:.72rem; color:var(--dim); margin:0 6px 4px; }
+  .shot{ align-self:flex-start; max-width:82%; }
+  .shot .cap{ font-size:.72rem; color:var(--dim); margin:0 4px 5px; }
+  .shot img{ max-width:100%; border-radius:10px; border:1px solid var(--line); display:block; }
   footer{ display:flex; gap:10px; padding:14px 16px; background:var(--panel); border-top:1px solid var(--line); }
   #entrada{ flex:1; resize:none; background:var(--panel2); color:var(--txt); border:1px solid var(--line);
             border-radius:10px; padding:11px 13px; font-size:.95rem; font-family:inherit; max-height:170px; }
@@ -240,6 +243,10 @@ function rowMsg(cls, autor, texto){
 }
 function chip(txt){ const c=document.createElement('div'); c.className='tool'; c.textContent='⚙ '+txt;
   log.appendChild(c); log.scrollTop=log.scrollHeight; }
+function mostrarImg(url){ const w=document.createElement('div'); w.className='shot';
+  const cap=document.createElement('div'); cap.className='cap'; cap.textContent='📸 o jogo rodando:';
+  const img=document.createElement('img'); img.src=url; img.onload=()=>log.scrollTop=log.scrollHeight;
+  w.appendChild(cap); w.appendChild(img); log.appendChild(w); log.scrollTop=log.scrollHeight; }
 
 async function carregarEstado(){
   estado = await (await fetch('/state')).json();
@@ -292,6 +299,7 @@ function enviar(){
     if(d.type==='text'){ if(!alvo){ alvo=rowMsg('a','alice',''); alvo.classList.add('piscando'); }
       alvo.textContent+=d.data; log.scrollTop=log.scrollHeight; }
     else if(d.type==='tool'){ if(alvo) alvo.classList.remove('piscando'); chip(d.data); alvo=null; }
+    else if(d.type==='image'){ mostrarImg(d.data); alvo=null; }
     else if(d.type==='error'){ chip('erro: '+d.data); }
     else if(d.type==='done'){ if(alvo) alvo.classList.remove('piscando');
       es.close(); btnEnviar.disabled=false; entrada.disabled=false; entrada.focus(); carregarConversas(); }
@@ -374,10 +382,24 @@ class Handler(BaseHTTPRequestHandler):
             self._json(d or {"messages": []})
         elif u.path == "/memoria":
             self._json(longmemory.carregar())
+        elif u.path == "/screenshot":
+            self._servir_screenshot()
         elif u.path == "/chat":
             self._chat((q.get("msg") or [""])[0])
         else:
             self.send_response(404); self.end_headers()
+
+    def _servir_screenshot(self):
+        p = tools.ULTIMO_SCREENSHOT
+        if not p.is_file():
+            self.send_response(404); self.end_headers(); return
+        dados = p.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", "image/png")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Content-Length", str(len(dados)))
+        self.end_headers()
+        self.wfile.write(dados)
 
     # ---------------------------------------------------------------- POST
     def do_POST(self):
@@ -423,6 +445,7 @@ class Handler(BaseHTTPRequestHandler):
             emit({"type": "done"}); return
         with _lock:
             try:
+                tirou_shot = False
                 for kind, dado in alice.stream(msg):
                     if kind == "text":
                         emit({"type": "text", "data": dado})
@@ -430,6 +453,12 @@ class Handler(BaseHTTPRequestHandler):
                         nome, args = dado
                         resumo = ", ".join(f"{k}={str(v)[:60]}" for k, v in (args or {}).items())
                         emit({"type": "tool", "data": f"{nome}({resumo})"})
+                        if nome == "godot_screenshot":
+                            tirou_shot = True
+                # se ela renderizou um screenshot, manda a imagem pra UI exibir
+                if tirou_shot and tools.ULTIMO_SCREENSHOT.is_file():
+                    mt = int(tools.ULTIMO_SCREENSHOT.stat().st_mtime)
+                    emit({"type": "image", "data": f"/screenshot?t={mt}"})
                 _salvar_conversa_atual()
                 emit({"type": "done"})
             except BrokenPipeError:

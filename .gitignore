@@ -2,6 +2,7 @@ config/config.json
 sessions/
 conversas/
 memoria_longa.json
+ultimo_screenshot.png
 __pycache__/
 *.pyc
 venv/

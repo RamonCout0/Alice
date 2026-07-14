@@ -4,10 +4,15 @@
 # ============================================================
 import os
 import re
+import glob
+import shutil
+import tempfile
 import pathlib
 import subprocess
 
 _WORKDIR: pathlib.Path = pathlib.Path(".").resolve()
+# onde o último screenshot renderizado é guardado (a interface web exibe)
+ULTIMO_SCREENSHOT = pathlib.Path(__file__).resolve().parent.parent / "ultimo_screenshot.png"
 _CONFIRM = None  # callback(cmd: str) -> bool ; definido pelo frontend
 _GODOT_BIN = ""  # caminho do binário do Godot ; definido pelo frontend via configure()
 
@@ -190,5 +195,78 @@ def godot_project_info() -> str:
     return "\n".join(partes)
 
 
+def _erros_godot(saida: str) -> list[str]:
+    """Extrai linhas de erro de runtime da saída do Godot."""
+    return [l for l in saida.splitlines()
+            if "SCRIPT ERROR" in l or l.strip().startswith("ERROR")
+            or "Parse Error" in l or "Cannot" in l]
+
+
+def godot_rodar(cena: str = "", frames: int = 180) -> str:
+    """RODA o jogo/uma cena de verdade em modo headless por 'frames' quadros e
+    reporta ERROS DE RUNTIME (não só de sintaxe — pega erros que só aparecem
+    quando o jogo executa: null, sinais mal conectados, chamadas inválidas etc).
+    Use depois de check_godot_syntax pra validar de verdade. 'cena' é o caminho
+    de uma .tscn do projeto (ex: 'Player/player.tscn'); vazio = cena principal."""
+    if not _GODOT_BIN:
+        return "ERRO: nenhum binário do Godot configurado (godot_bin no config.json)."
+    if not (_WORKDIR / "project.godot").is_file():
+        return "ERRO: a pasta atual não é um projeto Godot (sem project.godot)."
+    frames = max(1, min(int(frames), 3600))
+    cmd = [_GODOT_BIN, "--headless", "--path", str(_WORKDIR), "--quit-after", str(frames)]
+    if cena:
+        cmd.append(cena)
+    try:
+        r = subprocess.run(cmd, cwd=str(_WORKDIR), capture_output=True, text=True, timeout=90)
+    except subprocess.TimeoutExpired:
+        return "Execução excedeu o tempo limite (90s) — pode estar em loop infinito."
+    saida = (r.stdout + r.stderr).strip()
+    erros = _erros_godot(saida)
+    if erros:
+        return "Rodou COM ERROS de runtime:\n" + "\n".join(erros)[:5000]
+    return (f"OK — rodou {frames} frames sem erros de runtime.\n" +
+            (saida[-1200:] if saida else "(sem saída relevante)"))
+
+
+def godot_screenshot(cena: str = "", frames: int = 90) -> str:
+    """RODA o jogo/uma cena e RENDERIZA a imagem do que aparece na tela (na GPU),
+    guardando o último frame como screenshot que a interface exibe. Use pra 'ver'
+    o resultado visual do que você programou. 'cena' é o caminho de uma .tscn
+    (ex: 'Arenas/arena.tscn'); vazio = cena principal. 'frames' = quantos quadros
+    rodar antes de capturar (mais frames = cena mais 'adiantada')."""
+    if not _GODOT_BIN:
+        return "ERRO: nenhum binário do Godot configurado (godot_bin no config.json)."
+    if not (_WORKDIR / "project.godot").is_file():
+        return "ERRO: a pasta atual não é um projeto Godot (sem project.godot)."
+    frames = max(1, min(int(frames), 600))
+    tmp = tempfile.mkdtemp(prefix="alice_shot_")
+    prefixo = os.path.join(tmp, "f.png")
+    cmd = [_GODOT_BIN, "--path", str(_WORKDIR), "--write-movie", prefixo, "--quit-after", str(frames)]
+    if cena:
+        cmd.append(cena)
+    try:
+        r = subprocess.run(cmd, cwd=str(_WORKDIR), capture_output=True, text=True, timeout=120)
+    except subprocess.TimeoutExpired:
+        shutil.rmtree(tmp, ignore_errors=True)
+        return "Screenshot excedeu o tempo limite (120s)."
+    pngs = sorted(glob.glob(os.path.join(tmp, "f*.png")))
+    saida = (r.stdout + r.stderr)
+    if not pngs:
+        shutil.rmtree(tmp, ignore_errors=True)
+        erros = _erros_godot(saida)
+        return ("Screenshot falhou — nenhum frame renderizado (cena tem tela? "
+                "há cena principal?).\n" + ("\n".join(erros)[:2000] if erros else saida[-1500:]))
+    try:
+        shutil.copyfile(pngs[-1], str(ULTIMO_SCREENSHOT))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    msg = f"📸 Screenshot renderizado do jogo rodando ({len(pngs)}º frame) — a interface está exibindo a imagem."
+    erros = _erros_godot(saida)
+    if erros:
+        msg += "\n⚠️ Erros de runtime durante a execução:\n" + "\n".join(erros)[:1500]
+    return msg
+
+
 LOCAL_TOOLS = [read_file, list_dir, write_file, search_code, run_command,
-               check_godot_syntax, godot_project_info, lembrar]
+               check_godot_syntax, godot_project_info, godot_rodar,
+               godot_screenshot, lembrar]
