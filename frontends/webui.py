@@ -431,8 +431,31 @@ class Handler(BaseHTTPRequestHandler):
             longmemory.remover(int(b.get("indice", -1)))
             _reconstruir_prompt()
             self._json({"ok": True})
+        elif u.path == "/ask":
+            self._ask(b)
         else:
             self.send_response(404); self.end_headers()
+
+    def _ask(self, b: dict):
+        """Endpoint simples request/response — usado pelo plugin do Godot.
+        Recebe {msg, contexto} e devolve {resposta, ferramentas:[...]}."""
+        msg = (b.get("msg") or "").strip()
+        contexto = (b.get("contexto") or "").strip()
+        if not msg:
+            self._json({"resposta": "(mensagem vazia)", "ferramentas": []}); return
+        full = f"[Contexto do editor Godot — {contexto}]\n\n{msg}" if contexto else msg
+        partes, ferramentas = [], []
+        with _lock:
+            try:
+                for kind, dado in alice.stream(full):
+                    if kind == "text":
+                        partes.append(dado)
+                    elif kind == "tool":
+                        ferramentas.append(dado[0])
+                _salvar_conversa_atual()
+            except Exception as e:
+                self._json({"resposta": f"erro: {e}", "ferramentas": ferramentas}); return
+        self._json({"resposta": "".join(partes).strip(), "ferramentas": ferramentas})
 
     # ---------------------------------------------------------------- chat SSE
     def _chat(self, msg):
