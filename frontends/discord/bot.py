@@ -28,7 +28,7 @@ cfg = load_config()
 # no Discord as ferramentas são globais; comandos rodam sem confirmação interativa.
 # MCP (filesystem/git) fica só na CLI de propósito — aqui as ferramentas locais já
 # bastam, e run_command é restrito ao owner (ver agente_de) por não ter confirmação.
-tools.configure(workdir=cfg.workdir, confirm_cb=None)
+tools.configure(workdir=cfg.workdir, confirm_cb=None, godot_bin=cfg.godot_bin)
 SYSTEM = build_system_prompt(cfg)
 
 intents = discord.Intents.default()
@@ -38,11 +38,26 @@ bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 # um agente por usuário
 _agentes: dict[int, Agent] = {}
 
+# nomes de TODAS as ferramentas locais (ler/escrever/rodar/checar Godot)
+_TODAS_FERRAMENTAS = {fn.__name__ for fn in tools.LOCAL_TOOLS}
+# só leitura — deixam a Alice inspecionar o projeto pra falar do progresso,
+# sem poder criar/editar nada nem rodar comandos.
+_FERRAMENTAS_LEITURA = {"read_file", "list_dir", "search_code", "godot_project_info"}
+
 
 def agente_de(user_id: int) -> Agent:
     if user_id not in _agentes:
-        # run_command não pede confirmação no Discord -> só o owner pode usar
-        excluir = set() if user_id == cfg.owner_discord_id else {"run_command"}
+        # PAPEL DO DISCORD: aqui a Alice só CONVERSA e fala sobre os projetos /
+        # progresso — criar e editar jogos é exclusivo da interface local (web).
+        # SEGURANÇA: qualquer um no Discord pode mencioná-la, e um mal-intencionado
+        # poderia pedir pra ela escrever/executar scripts maliciosos. Por isso:
+        #   • DONO   -> só ferramentas de LEITURA (olha o projeto, conta o progresso)
+        #   • OUTROS -> NENHUMA ferramenta (pura conversa, nunca toca no disco)
+        # Ninguém — nem o dono — cria/edita/roda nada pelo Discord.
+        if user_id == cfg.owner_discord_id:
+            excluir = _TODAS_FERRAMENTAS - _FERRAMENTAS_LEITURA
+        else:
+            excluir = _TODAS_FERRAMENTAS
         _agentes[user_id] = Agent(cfg, SYSTEM, exclude_tools=excluir)
     return _agentes[user_id]
 

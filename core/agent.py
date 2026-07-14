@@ -12,26 +12,54 @@ from core.config import Config
 
 _TAG_RX = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
 _FENCE_RX = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
+_JSON_DECODER = json.JSONDecoder()
+
+
+def _achar_jsons_soltos(texto: str):
+    """Varre o texto procurando objetos JSON completos em qualquer posição,
+    mesmo com prosa antes/depois e sem cercas ou tags."""
+    achados = []
+    i, n = 0, len(texto)
+    while i < n:
+        if texto[i] == "{":
+            try:
+                obj, fim = _JSON_DECODER.raw_decode(texto, i)
+            except json.JSONDecodeError:
+                i += 1
+                continue
+            achados.append(obj)
+            i = fim
+        else:
+            i += 1
+    return achados
 
 
 def _extract_fallback_tool_calls(content: str):
     """
     Alguns modelos (ex: qwen2.5-coder via Ollama) às vezes devolvem a chamada
-    de ferramenta como JSON solto em `content` — puro, em bloco ```json``` ou
-    em <tool_call></tool_call> — sem preencher `tool_calls`. O parser nativo
-    do Ollama só reconhece a forma com tags; aqui cobrimos as outras também.
+    de ferramenta como JSON solto em `content` — puro, em bloco ```json```,
+    em <tool_call></tool_call>, ou até misturado com prosa antes sem cerca
+    nenhuma — sem preencher `tool_calls`. O parser nativo do Ollama só
+    reconhece a forma com tags; aqui cobrimos as outras também.
     """
     if not content:
         return None
-    candidatos = _TAG_RX.findall(content) or _FENCE_RX.findall(content) or [content.strip()]
-    chamadas = []
-    for c in candidatos:
-        try:
-            data = json.loads(c)
-        except (json.JSONDecodeError, TypeError):
-            continue
-        if isinstance(data, dict) and "name" in data:
-            chamadas.append({"function": {"name": data["name"], "arguments": data.get("arguments") or {}}})
+    brutos = _TAG_RX.findall(content) or _FENCE_RX.findall(content)
+    if brutos:
+        objetos = []
+        for c in brutos:
+            try:
+                objetos.append(json.loads(c))
+            except (json.JSONDecodeError, TypeError):
+                continue
+    else:
+        objetos = _achar_jsons_soltos(content)
+
+    chamadas = [
+        {"function": {"name": data["name"], "arguments": data.get("arguments") or {}}}
+        for data in objetos
+        if isinstance(data, dict) and "name" in data
+    ]
     return chamadas or None
 
 

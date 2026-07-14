@@ -42,6 +42,7 @@ def main():
     tools.configure(
         workdir=cfg.workdir,
         confirm_cb=confirmar_comando if cfg.confirm_commands else None,
+        godot_bin=cfg.godot_bin,
     )
     extra_tools, extra_dispatch = carregar_mcp(cfg)
     alice = Agent(cfg, build_system_prompt(cfg), extra_tools, extra_dispatch)
@@ -67,7 +68,7 @@ def main():
         if user.startswith("/cwd "):
             novo = user[5:].strip()
             cfg.workdir = novo
-            tools.configure(workdir=novo, confirm_cb=confirmar_comando if cfg.confirm_commands else None)
+            tools.configure(workdir=novo, confirm_cb=confirmar_comando if cfg.confirm_commands else None, godot_bin=cfg.godot_bin)
             print(f"{DIM}projeto agora: {os.path.abspath(novo)}{RST}\n")
             continue
         if user.startswith("/salvar "):

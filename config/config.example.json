@@ -1,5 +1,5 @@
 {
-  "model": "qwen2.5-coder:7b",
+  "model": "qwen3:8b",
   "ollama_host": "http://localhost:11434",
   "num_ctx": 16384,
   "temperature": 0.4,
@@ -9,6 +9,7 @@
 
   "discord_token": "",
   "owner_discord_id": 0,
+  "godot_bin": "",
 
   "mcp_servers": {
     "_comentario": "Descomente/edite para plugar servidores MCP reais. Precisa de Node (npx) ou uv instalado.",

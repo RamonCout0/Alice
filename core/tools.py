@@ -9,6 +9,7 @@ import subprocess
 
 _WORKDIR: pathlib.Path = pathlib.Path(".").resolve()
 _CONFIRM = None  # callback(cmd: str) -> bool ; definido pelo frontend
+_GODOT_BIN = ""  # caminho do binário do Godot ; definido pelo frontend via configure()
 
 _IGNORAR = {".git", "__pycache__", "venv", ".venv", "node_modules", ".idea", ".mypy_cache"}
 
@@ -31,11 +32,12 @@ def _sem_confirmacao_real() -> bool:
     return _CONFIRM is None
 
 
-def configure(workdir: str = ".", confirm_cb=None):
-    """Define a raiz do projeto e o callback de confirmação de comandos."""
-    global _WORKDIR, _CONFIRM
+def configure(workdir: str = ".", confirm_cb=None, godot_bin: str = ""):
+    """Define a raiz do projeto, o callback de confirmação e o binário do Godot."""
+    global _WORKDIR, _CONFIRM, _GODOT_BIN
     _WORKDIR = pathlib.Path(workdir).resolve()
     _CONFIRM = confirm_cb
+    _GODOT_BIN = godot_bin
 
 
 def _safe(path: str) -> pathlib.Path:
@@ -120,4 +122,73 @@ def run_command(command: str) -> str:
     return saida[:10000] or f"(sem saída · código de retorno {r.returncode})"
 
 
-LOCAL_TOOLS = [read_file, list_dir, write_file, search_code, run_command]
+def check_godot_syntax(path: str) -> str:
+    """Valida a sintaxe de um script .gd do projeto rodando o Godot em modo headless (--check-only). Use depois de escrever qualquer script GDScript, antes de considerar terminado. LIMITAÇÃO CONHECIDA: --check-only não resolve autoloads/singletons do projeto, então um erro tipo 'Identifier not found: NomeDoAutoload' pode ser FALSO POSITIVO — confira o project.godot (seção [autoload]) antes de tentar 'corrigir' esse tipo de erro especificamente."""
+    if not _GODOT_BIN:
+        return "ERRO: nenhum binário do Godot configurado (godot_bin no config.json)."
+    p = _safe(path)
+    if not p.is_file():
+        return f"Arquivo não encontrado: {path}"
+    try:
+        r = subprocess.run(
+            [_GODOT_BIN, "--headless", "--script", str(p.relative_to(_WORKDIR)), "--check-only"],
+            cwd=str(_WORKDIR), capture_output=True, text=True, timeout=60,
+        )
+    except subprocess.TimeoutExpired:
+        return "Checagem excedeu o tempo limite (60s)."
+    saida = (r.stdout + r.stderr).strip()
+    if r.returncode == 0 and "SCRIPT ERROR" not in saida and "ERROR" not in saida:
+        return f"OK — {path} sem erros de sintaxe."
+    return saida[:6000] or f"Falhou (código {r.returncode}), sem detalhes na saída."
+
+
+def lembrar(fato: str, tag: str = "geral") -> str:
+    """Guarda na MEMÓRIA DE LONGO PRAZO um fato que deve valer pra sempre, em
+    qualquer conversa futura (preferência do Ramon, decisão de projeto, convenção
+    de código, algo importante que você aprendeu). Use com parcimônia, só pra
+    coisas realmente duradouras — NÃO pra detalhes efêmeros da conversa atual.
+    'tag' é uma categoria curta (ex: 'godot', 'preferencia', 'projeto')."""
+    from core import longmemory
+    ok = longmemory.adicionar(fato, tag)
+    return f"Guardado na memória de longo prazo: {fato}" if ok else "Isso eu já sabia (não dupliquei)."
+
+
+def godot_project_info() -> str:
+    """Resume o project.godot do projeto atual: versão do Godot (config/features),
+    cena principal, autoloads/singletons e ações de input. Use isto ANTES de mexer
+    num projeto Godot pra entender a estrutura e não quebrar convenções."""
+    p = _WORKDIR / "project.godot"
+    if not p.is_file():
+        return "Não há project.godot na raiz do projeto atual (não é um projeto Godot?)."
+    txt = p.read_text(encoding="utf-8", errors="replace")
+    secao = None
+    features, main_scene, autoloads, inputs = [], None, [], []
+    for linha in txt.splitlines():
+        s = linha.strip()
+        if s.startswith("[") and s.endswith("]"):
+            secao = s[1:-1]
+            continue
+        if not s or s.startswith(";") or "=" not in s:
+            continue
+        chave, _, valor = s.partition("=")
+        chave, valor = chave.strip(), valor.strip()
+        if chave == "config/features":
+            features.append(valor.strip('"[] '))
+        elif chave == "run/main_scene":
+            main_scene = valor.strip('"')
+        elif secao == "autoload":
+            autoloads.append(f"{chave} = {valor}")
+        elif secao == "input":
+            inputs.append(chave)
+    partes = ["📦 project.godot:"]
+    partes.append(f"  versão/features: {', '.join(features) if features else '?'}")
+    partes.append(f"  cena principal: {main_scene or '?'}")
+    partes.append(f"  autoloads/singletons: {', '.join(a.split(' = ')[0] for a in autoloads) if autoloads else '(nenhum)'}")
+    if autoloads:
+        partes += [f"    {a}" for a in autoloads]
+    partes.append(f"  ações de input: {', '.join(inputs) if inputs else '(nenhuma)'}")
+    return "\n".join(partes)
+
+
+LOCAL_TOOLS = [read_file, list_dir, write_file, search_code, run_command,
+               check_godot_syntax, godot_project_info, lembrar]

@@ -13,7 +13,7 @@ PERS_JSON      = os.path.join(BASE_DIR, "config", "personalidade.json")
 
 @dataclass
 class Config:
-    model: str            = "qwen2.5-coder:7b"
+    model: str            = "qwen3:8b"
     ollama_host: str      = "http://localhost:11434"
     num_ctx: int          = 8192
     temperature: float    = 0.4
@@ -22,6 +22,7 @@ class Config:
     max_tool_chars: int   = 12000
     discord_token: str    = ""
     owner_discord_id: int = 0
+    godot_bin: str        = ""
     mcp_servers: dict     = field(default_factory=dict)
 
 
@@ -40,13 +41,21 @@ def load_personalidade() -> dict:
 
 
 def build_system_prompt(cfg: Config) -> str:
-    """Junta a personalidade com o guia de uso das ferramentas."""
+    """Junta a personalidade + guia de ferramentas + memória de longo prazo."""
+    from core import longmemory
     pers = load_personalidade()
     guia = (
         "\n\nFERRAMENTAS DISPONÍVEIS: read_file (ler arquivo), list_dir (listar pasta), "
-        "search_code (buscar texto/regex no código), write_file (criar/editar arquivo) e "
-        "run_command (rodar comando de shell). SEMPRE use as ferramentas para inspecionar o "
-        "código REAL antes de responder — nunca invente o conteúdo de um arquivo.\n"
+        "search_code (buscar texto/regex no código), write_file (criar/editar arquivo), "
+        "run_command (rodar comando de shell), check_godot_syntax (valida um script .gd "
+        "rodando o Godot de verdade — use depois de escrever QUALQUER script GDScript, e "
+        "corrija os erros reportados antes de considerar terminado), godot_project_info "
+        "(resume o project.godot: versão, cena principal, autoloads e inputs — use ANTES de "
+        "mexer num projeto Godot) e lembrar (guarda um fato na sua memória de longo prazo, "
+        "que vale pra sempre em qualquer conversa). SEMPRE use as ferramentas para inspecionar "
+        "o código REAL antes de responder — nunca invente o conteúdo de um arquivo. Quando o "
+        "Ramon te contar uma preferência, decisão ou convenção que valha pra sempre, use "
+        "'lembrar' pra não esquecer.\n"
         f"Diretório do projeto atual: {os.path.abspath(cfg.workdir)}"
     )
-    return pers["system"].strip() + guia
+    return pers["system"].strip() + guia + longmemory.texto_para_prompt()

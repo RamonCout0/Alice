@@ -1,5 +1,7 @@
 config/config.json
 sessions/
+conversas/
+memoria_longa.json
 __pycache__/
 *.pyc
 venv/
