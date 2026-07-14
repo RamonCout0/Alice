@@ -101,6 +101,30 @@ def write_file(path: str, content: str) -> str:
     return f"Arquivo salvo: {path} ({len(content)} caracteres)"
 
 
+def editar_arquivo(path: str, trecho_antigo: str, trecho_novo: str) -> str:
+    """Edição CIRÚRGICA: troca um trecho EXATO de um arquivo por outro, sem
+    reescrever o resto. Use isto (e não write_file) pra mudanças pequenas —
+    corrigir uma linha, adicionar uma const, renomear algo. 'trecho_antigo'
+    precisa aparecer EXATAMENTE UMA vez (copie do arquivo, com a indentação).
+    Pra INSERIR algo novo, inclua uma linha vizinha existente no antigo e
+    repita ela + a nova linha no novo."""
+    p = _safe(path)
+    if _autoprotegido(p) and _sem_confirmacao_real():
+        return "ERRO: autoproteção — não posso editar a minha própria pasta de instalação sem confirmação."
+    if not p.is_file():
+        return f"Arquivo não encontrado: {path}"
+    conteudo = p.read_text(encoding="utf-8", errors="replace")
+    n = conteudo.count(trecho_antigo)
+    if n == 0:
+        return ("Não achei o 'trecho_antigo' no arquivo. Copie um trecho EXATO "
+                "(com a mesma indentação) usando read_file antes.")
+    if n > 1:
+        return (f"'trecho_antigo' aparece {n} vezes — inclua mais linhas de "
+                "contexto pra ele ficar único.")
+    p.write_text(conteudo.replace(trecho_antigo, trecho_novo), encoding="utf-8")
+    return f"Editado: {path} (1 trecho substituído)."
+
+
 def search_code(pattern: str, path: str = ".") -> str:
     """Procura um texto ou regex nos arquivos do projeto (grep). Retorna arquivo:linha."""
     base = _safe(path)
@@ -319,6 +343,6 @@ def godot_screenshot(cena: str = "", frames: int = 90) -> str:
     return msg
 
 
-LOCAL_TOOLS = [read_file, list_dir, write_file, search_code, run_command,
-               check_godot_syntax, godot_project_info, godot_rodar,
+LOCAL_TOOLS = [read_file, list_dir, write_file, editar_arquivo, search_code,
+               run_command, check_godot_syntax, godot_project_info, godot_rodar,
                godot_screenshot, ler_referencia, listar_referencia, lembrar]

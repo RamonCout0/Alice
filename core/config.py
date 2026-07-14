@@ -48,7 +48,10 @@ def build_system_prompt(cfg: Config) -> str:
     pers = load_personalidade()
     guia = (
         "\n\nFERRAMENTAS DISPONÍVEIS: read_file (ler arquivo), list_dir (listar pasta), "
-        "search_code (buscar texto/regex no código), write_file (criar/editar arquivo), "
+        "search_code (buscar texto/regex no código), write_file (criar arquivo NOVO ou "
+        "reescrever inteiro), editar_arquivo (troca CIRÚRGICA de um trecho — USE ESTE pra "
+        "mudanças pequenas num arquivo existente, tipo corrigir uma linha ou adicionar uma "
+        "const; nunca reescreva um arquivo grande inteiro só pra mudar pouca coisa), "
         "run_command (rodar comando de shell), check_godot_syntax (valida um script .gd "
         "rodando o Godot de verdade — use depois de escrever QUALQUER script GDScript, e "
         "corrija os erros reportados antes de considerar terminado), godot_project_info "
