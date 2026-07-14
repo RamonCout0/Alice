@@ -1,0 +1,1 @@
+{"nome":"AudioEffectLowPassFilter","herda":"AudioEffectFilter","breve":"Adds a low-pass filter to an audio bus.","descricao":"A \"low-pass\" filter attenuates frequencies higher than 'AudioEffectFilter.cutoff_hz' and allows lower frequencies to pass unchanged.\nThis filter can be used to muffle sounds."}

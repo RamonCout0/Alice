@@ -1,0 +1,1 @@
+{"nome":"VisualShaderNodeUIntConstant","herda":"VisualShaderNodeConstant","breve":"An unsigned scalar integer constant to be used within the visual shader graph.","descricao":"Translated to uint in the shader language.","propriedades":[{"nome":"constant","tipo":"int","padrao":"0","desc":"An unsigned integer constant which represents a state of this node."}]}

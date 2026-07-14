@@ -1,0 +1,1 @@
+{"nome":"VisualShaderNodeSDFRaymarch","herda":"VisualShaderNode","breve":"SDF raymarching algorithm to be used within the visual shader graph.","descricao":"Casts a ray against the screen SDF (signed-distance field) and returns the distance travelled."}

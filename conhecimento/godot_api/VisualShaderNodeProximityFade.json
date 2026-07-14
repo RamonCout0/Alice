@@ -1,0 +1,1 @@
+{"nome":"VisualShaderNodeProximityFade","herda":"VisualShaderNode","breve":"A visual shader node representing proximity fade effect.","descricao":"The proximity fade effect fades out each pixel based on its distance to another object."}

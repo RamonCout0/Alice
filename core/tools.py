@@ -53,13 +53,22 @@ def configure(workdir: str = ".", confirm_cb=None, godot_bin: str = "", referenc
 
 def _rel(path: str) -> str:
     """Aceita caminhos estilo Godot: 'res://X' e 'user://X' viram relativos ao
-    projeto, e uma '/' inicial é removida. Assim a Alice pode usar exatamente o
-    caminho que o editor mostra (ex: res://Player/player.gd)."""
+    projeto, e uma '/' inicial é removida — essa é a convenção Godot de 'raiz
+    do projeto' (ex: '/Player/x.gd' == 'Player/x.gd'), então uma barra inicial
+    sozinha NUNCA é tratada como caminho absoluto de sistema.
+    O único caso realmente perigoso é o caminho ABSOLUTO DE VERDADE que já
+    contém o workdir inteiro (ex: o modelo colou '/home/user/projeto/x.gd' em
+    vez de 'x.gd') — isso duplicava o workdir dentro dele mesmo. Detectamos
+    esse caso específico e normalizamos; fora dele, mantém o comportamento
+    de sempre (lstrip)."""
     p = (path or "").strip()
     for pref in ("res://", "user://"):
         if p.startswith(pref):
-            p = p[len(pref):]
-            break
+            return p[len(pref):].lstrip("/")
+    for base in (_WORKDIR, _ALICE_DIR):
+        base_str = str(base)
+        if p == base_str or p.startswith(base_str + "/"):
+            return p[len(base_str):].lstrip("/")
     return p.lstrip("/")
 
 
@@ -188,7 +197,8 @@ def check_godot_syntax(path: str) -> str:
     saida = (r.stdout + r.stderr).strip()
     if r.returncode == 0 and "SCRIPT ERROR" not in saida and "ERROR" not in saida:
         return f"OK — {path} sem erros de sintaxe."
-    return saida[:6000] or f"Falhou (código {r.returncode}), sem detalhes na saída."
+    saida = saida[:6000] or f"Falhou (código {r.returncode}), sem detalhes na saída."
+    return saida + _com_diagnostico(saida)
 
 
 def _safe_ref(path: str) -> pathlib.Path:
@@ -276,6 +286,28 @@ def buscar_asset_godot(consulta: str) -> str:
     return "\n".join(linhas)
 
 
+def godot_doc(classe: str, membro: str = "") -> str:
+    """DOCUMENTAÇÃO OFICIAL do Godot 4.7 embutida (todas as 1071 classes da
+    engine). Sem 'membro': visão geral da classe — o que ela é, TODAS as
+    propriedades, assinaturas de TODOS os métodos e sinais. Com 'membro':
+    a explicação detalhada daquele método/propriedade/sinal/constante.
+    USE SEMPRE que for chamar um método que você não usou há pouco — a
+    assinatura exata daqui NUNCA erra, sua memória pode errar.
+    Ex: godot_doc(classe='CharacterBody2D') ; godot_doc(classe='Tween', membro='tween_property')."""
+    from core import docs
+    return docs.doc_classe(classe, membro)
+
+
+def buscar_doc(termo: str) -> str:
+    """Procura um nome em TODA a API oficial do Godot 4.7 (classes, métodos,
+    propriedades, sinais, constantes) e diz ONDE cada coisa mora. Use quando
+    não souber em que classe algo fica ou se algo existe (ex: buscar_doc('lerp'),
+    buscar_doc('body_entered'), buscar_doc('raycast')). A API é em inglês.
+    Depois aprofunde com godot_doc(classe=..., membro=...)."""
+    from core import docs
+    return docs.buscar(termo)
+
+
 def buscar_padrao(consulta: str) -> str:
     """Busca na BIBLIOTECA DE PADRÕES do Godot 4.7 blocos de código PRONTOS e
     corretos pra você ENCAIXAR (tipo Lego) em vez de escrever do zero. USE ISTO
@@ -361,6 +393,27 @@ def godot_project_info() -> str:
     return "\n".join(partes)
 
 
+def _com_diagnostico(saida_erro: str) -> str:
+    """Se o erro casar com o dicionário de erros comuns, anexa causa+correção."""
+    from core import docs
+    diag = docs.diagnosticar(saida_erro)
+    return f"\n\n🔎 DIAGNÓSTICO (erros conhecidos):\n{diag}" if diag else ""
+
+
+def diagnosticar_erro(erro: str) -> str:
+    """Explica uma mensagem de erro do Godot: cole o erro (ou parte dele) e
+    receba a CAUSA real e a CORREÇÃO com exemplo — cobre as armadilhas
+    clássicas (sintaxe antiga do Godot 3, indentação, sinais, null, física).
+    Use quando um erro não fizer sentido pra você."""
+    from core import docs
+    diag = docs.diagnosticar(erro, limite=4)
+    if diag:
+        return diag
+    return ("Esse erro não está no meu dicionário de erros conhecidos. "
+            "Leia a linha exata que o Godot apontou, confira a assinatura do que "
+            "você chamou com godot_doc e, se precisar, pesquise com abrir_url.")
+
+
 def _erros_godot(saida: str) -> list[str]:
     """Extrai linhas de erro de runtime da saída do Godot."""
     return [l for l in saida.splitlines()
@@ -389,7 +442,8 @@ def godot_rodar(cena: str = "", frames: int = 180) -> str:
     saida = (r.stdout + r.stderr).strip()
     erros = _erros_godot(saida)
     if erros:
-        return "Rodou COM ERROS de runtime:\n" + "\n".join(erros)[:5000]
+        texto = "Rodou COM ERROS de runtime:\n" + "\n".join(erros)[:5000]
+        return texto + _com_diagnostico(texto)
     return (f"OK — rodou {frames} frames sem erros de runtime.\n" +
             (saida[-1200:] if saida else "(sem saída relevante)"))
 
@@ -437,4 +491,5 @@ LOCAL_TOOLS = [read_file, list_dir, write_file, editar_arquivo, search_code,
                run_command, check_godot_syntax, godot_project_info, godot_rodar,
                godot_screenshot, ler_referencia, listar_referencia,
                buscar_padrao, listar_padroes, salvar_padrao,
+               godot_doc, buscar_doc, diagnosticar_erro,
                abrir_url, buscar_asset_godot, lembrar]

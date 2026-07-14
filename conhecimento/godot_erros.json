@@ -1,0 +1,362 @@
+{
+  "descricao": "Dicionário de erros comuns do Godot 4.7: cada entrada casa (por substring/regex, case-insensitive) com a mensagem de erro que o Godot cospe, e diz a causa real e a correção. Cobre principalmente sintaxe antiga do Godot 3 e erros clássicos de GDScript.",
+  "erros": [
+    {
+      "casa": "KinematicBody",
+      "causa": "KinematicBody2D/3D é Godot 3 — não existe mais no Godot 4.",
+      "correcao": "Use 'extends CharacterBody2D' (ou CharacterBody3D). A velocidade agora é a propriedade embutida 'velocity' e o movimento é 'move_and_slide()' SEM argumentos.",
+      "exemplo": "extends CharacterBody2D\n\nfunc _physics_process(delta):\n\tvelocity.x = 100\n\tmove_and_slide()"
+    },
+    {
+      "casa": "Too many arguments for \"move_and_slide",
+      "causa": "No Godot 4 move_and_slide() NÃO recebe argumentos (era do Godot 3 passar velocity e up_direction).",
+      "correcao": "Atribua a 'velocity' (propriedade embutida do CharacterBody2D/3D) antes e chame só 'move_and_slide()'. O retorno é bool (colidiu ou não), não a velocidade.",
+      "exemplo": "velocity = direcao * speed\nmove_and_slide()"
+    },
+    {
+      "casa": "Member \"velocity\" redefined",
+      "causa": "Você declarou 'var velocity' num CharacterBody2D/3D, mas 'velocity' já é propriedade embutida da classe.",
+      "correcao": "Apague a declaração 'var velocity ...' e use a propriedade direto: 'velocity.x = ...', 'velocity += ...'.",
+      "exemplo": ""
+    },
+    {
+      "casa": "redefined (original in native class",
+      "causa": "Você declarou uma variável/função com nome que a classe-mãe já tem (ex: velocity, position, rotation, scale, name).",
+      "correcao": "Não redeclare: use a propriedade herdada direto, ou escolha outro nome (ex: '_velocidade_alvo').",
+      "exemplo": ""
+    },
+    {
+      "casa": "expected end of statement after expression, found \":\"",
+      "causa": "Quase sempre é sintaxe de Godot 3: 'export var x: tipo' sem @, 'onready var' sem @, ou dicionário/lambda mal formado.",
+      "correcao": "Godot 4: '@export var x: Tipo = valor' e '@onready var y = $No'. Anotações começam com @.",
+      "exemplo": "@export var speed: float = 300.0\n@onready var sprite: Sprite2D = $Sprite2D"
+    },
+    {
+      "casa": "(?i)unexpected +\"export\"|identifier \"export\"|keyword \"export\"",
+      "casa_regex": true,
+      "causa": "'export var' é Godot 3.",
+      "correcao": "No Godot 4 é anotação: '@export var vida: int = 100'. Variantes: @export_range(0, 10), @export_enum(\"A\", \"B\"), @export_file, @export_group.",
+      "exemplo": "@export var speed: float = 300.0\n@export_range(0.0, 1.0) var volume: float = 0.8"
+    },
+    {
+      "casa": "(?i)unexpected +\"onready\"|identifier \"onready\"|keyword \"onready\"",
+      "casa_regex": true,
+      "causa": "'onready var' é Godot 3.",
+      "correcao": "No Godot 4 é '@onready var x = $Caminho/Do/No'.",
+      "exemplo": "@onready var anim: AnimatedSprite2D = $AnimatedSprite2D"
+    },
+    {
+      "casa": "The method \"emit_signal\" ",
+      "causa": "emit_signal(\"nome\", args) funciona mas é jeito antigo; se deu erro, o nome do sinal provavelmente está errado ou o sinal não foi declarado.",
+      "correcao": "Godot 4: declare 'signal vida_mudou(atual: int)' e emita com 'vida_mudou.emit(atual)'. Conecte com 'vida_mudou.connect(_func)'.",
+      "exemplo": "signal morreu\n\nfunc _die():\n\tmorreu.emit()"
+    },
+    {
+      "casa": "Cannot find member \"connect\" in base",
+      "causa": "Tentou conectar um sinal que não existe nesse nó, ou usou a sintaxe antiga connect(\"nome\", self, \"_metodo\").",
+      "correcao": "Godot 4: 'no.sinal.connect(_metodo)' — o sinal é acessado como propriedade e o alvo é um Callable direto (sem aspas). Confira o nome do sinal com godot_doc.",
+      "exemplo": "area.body_entered.connect(_ao_entrar)\nbotao.pressed.connect(_ao_clicar)"
+    },
+    {
+      "casa": "Invalid argument for \"connect()\" function: argument 2 should be \"Callable\"",
+      "causa": "Sintaxe de connect do Godot 3 (string com nome do método).",
+      "correcao": "Passe o método direto como Callable: 'timer.timeout.connect(_ao_terminar)' — sem aspas, sem self.",
+      "exemplo": "timer.timeout.connect(_ao_terminar)"
+    },
+    {
+      "casa": "\"instance()\" not found",
+      "causa": "PackedScene.instance() é Godot 3.",
+      "correcao": "No Godot 4 é 'instantiate()'.",
+      "exemplo": "var bala := bala_cena.instantiate()\nadd_child(bala)"
+    },
+    {
+      "casa": "Identifier \"Vector2.ZERO\" not declared",
+      "causa": "Raríssimo — geralmente typo (VECTOR2, vector2).",
+      "correcao": "Escreva exatamente 'Vector2.ZERO' (também: .ONE, .UP, .DOWN, .LEFT, .RIGHT).",
+      "exemplo": "velocity = Vector2.ZERO"
+    },
+    {
+      "casa": "rand_range",
+      "causa": "rand_range() é Godot 3.",
+      "correcao": "Godot 4: 'randf_range(a, b)' pra float, 'randi_range(a, b)' pra int. randomize() continua existindo mas já é automático.",
+      "exemplo": "var x := randf_range(-100.0, 100.0)\nvar dado := randi_range(1, 6)"
+    },
+    {
+      "casa": "\"yield\" was removed",
+      "causa": "yield() é Godot 3 — virou await.",
+      "correcao": "Godot 4: 'await no.sinal' ou 'await get_tree().create_timer(1.0).timeout'.",
+      "exemplo": "await get_tree().create_timer(0.5).timeout\nprint(\"meio segundo depois\")"
+    },
+    {
+      "casa": "Identifier \"OS\" not declared in the current scope; did you mean",
+      "causa": "Várias funções saíram de OS no Godot 4 (janela → DisplayServer, tempo → Time).",
+      "correcao": "OS.window_* → DisplayServer.window_*; OS.get_ticks_msec() → Time.get_ticks_msec(); OS.get_datetime() → Time.get_datetime_dict_from_system().",
+      "exemplo": "var ms := Time.get_ticks_msec()"
+    },
+    {
+      "casa": "\"change_scene()\"",
+      "causa": "change_scene(caminho) é Godot 3.",
+      "correcao": "Godot 4: 'get_tree().change_scene_to_file(\"res://cena.tscn\")' ou change_scene_to_packed(packed_scene).",
+      "exemplo": "get_tree().change_scene_to_file(\"res://fases/fase2.tscn\")"
+    },
+    {
+      "casa": "Identifier \"File\" not declared",
+      "causa": "A classe File é Godot 3 — virou FileAccess (e Directory virou DirAccess).",
+      "correcao": "Godot 4: 'var f = FileAccess.open(caminho, FileAccess.READ)' — métodos estáticos, sem .new().",
+      "exemplo": "var f := FileAccess.open(\"user://save.json\", FileAccess.WRITE)\nf.store_string(JSON.stringify(dados))"
+    },
+    {
+      "casa": "Static function \"parse()\" not found in base \"JSON\"",
+      "causa": "JSON.parse() do Godot 3 mudou.",
+      "correcao": "Godot 4: 'JSON.parse_string(texto)' devolve o dado direto (ou null se inválido); 'JSON.stringify(dado)' converte pra texto.",
+      "exemplo": "var dados = JSON.parse_string(f.get_as_text())\nif dados is Dictionary:\n\tprint(dados)"
+    },
+    {
+      "casa": "Function \"is_action_just_pressed\" not found in base \"self\"",
+      "causa": "Input é um singleton — os métodos são de Input, não do nó.",
+      "correcao": "'Input.is_action_just_pressed(\"jump\")', 'Input.get_axis(...)', 'Input.get_vector(...)'.",
+      "exemplo": "if Input.is_action_just_pressed(\"jump\"):\n\tvelocity.y = jump_velocity"
+    },
+    {
+      "casa": "The action \"",
+      "causa": "A ação de input usada no código não está registrada no project.godot (seção [input]).",
+      "correcao": "Confira as ações existentes com godot_project_info. Registre a ação no project.godot ([input]) ou use uma ação embutida (ui_left, ui_right, ui_up, ui_down, ui_accept, ui_cancel).",
+      "exemplo": "[input]\n\njump={\n\"deadzone\": 0.5,\n\"events\": [Object(InputEventKey,\"physical_keycode\":32)]\n}"
+    },
+    {
+      "casa": "Could not find base class",
+      "causa": "A classe base do 'extends' não existe no Godot 4 — quase sempre é nome do Godot 3.",
+      "correcao": "Troque pelo nome atual: KinematicBody2D→CharacterBody2D, KinematicBody→CharacterBody3D, Spatial→Node3D, Area (3D)→Area3D, Camera→Camera3D, MeshInstance→MeshInstance3D, Particles2D→GPUParticles2D. Confirme com buscar_doc.",
+      "exemplo": "extends CharacterBody2D"
+    },
+    {
+      "casa": "Expected end of statement after variable declaration",
+      "causa": "Sobrou coisa depois da declaração da var — geralmente 'setget' (Godot 3) ou vírgula/token perdido.",
+      "correcao": "setget virou get/set inline no Godot 4.",
+      "exemplo": "var vida: int = 100:\n\tset(valor):\n\t\tvida = clampi(valor, 0, 100)"
+    },
+    {
+      "casa": "was removed in Godot 4",
+      "causa": "Sintaxe do Godot 3 que foi removida — o próprio erro diz o substituto.",
+      "correcao": "Siga a dica da mensagem: export→@export, onready→@onready, tool→@tool, yield→await. Anotações no Godot 4 começam com @.",
+      "exemplo": "@export var speed: float = 300.0\n@onready var sprite: Sprite2D = $Sprite2D"
+    },
+    {
+      "casa": "Did you mean to use",
+      "causa": "A função chamada não existe mais com esse nome — o Godot sugeriu o nome novo na própria mensagem.",
+      "correcao": "Use exatamente o nome que a mensagem sugeriu (é a versão Godot 4 da função).",
+      "exemplo": ""
+    },
+    {
+      "casa": "Identifier not found",
+      "causa": "Nome não existe no escopo: pode ser (1) typo, (2) autoload usado sem estar registrado, (3) classe que mudou de nome no Godot 4, (4) class_name de outro script que não foi definida.",
+      "correcao": "ATENÇÃO: se o nome é um autoload registrado no project.godot ([autoload]), esse erro no check_godot_syntax é FALSO POSITIVO (a checagem isolada não resolve autoloads) — ignore. Senão: confira o nome com buscar_doc; nomes do Godot 3 têm equivalente novo (Spatial→Node3D, KinematicBody2D→CharacterBody2D, PoolStringArray→PackedStringArray).",
+      "exemplo": ""
+    },
+    {
+      "casa": "Could not resolve the identifier",
+      "causa": "Mesma família do 'Identifier not found' — nome desconhecido no escopo atual.",
+      "correcao": "Se for autoload do project.godot, é falso positivo do check isolado. Senão procure o nome certo com buscar_doc.",
+      "exemplo": ""
+    },
+    {
+      "casa": "Parse Error: Expected indented block",
+      "causa": "Depois de 'func', 'if', 'for', 'while', 'match' precisa vir um bloco INDENTADO COM TAB — ou o bloco está vazio.",
+      "correcao": "Indente o corpo com TAB (GDScript usa tabs por padrão; nunca misture tab e espaço). Bloco intencionalmente vazio: escreva 'pass'.",
+      "exemplo": "func _ready() -> void:\n\tpass"
+    },
+    {
+      "casa": "Used space character for indentation instead of tab",
+      "causa": "Misturou espaços com tabs na indentação.",
+      "correcao": "Reescreva o arquivo usando SOMENTE tabs (\\t) pra indentar. Todos os padrões da biblioteca usam tab.",
+      "exemplo": ""
+    },
+    {
+      "casa": "Used tab character for indentation instead of space",
+      "causa": "O arquivo começou com espaços e depois misturou tabs.",
+      "correcao": "Padronize o arquivo inteiro: só tabs. Reescreva com write_file se a mistura estiver espalhada.",
+      "exemplo": ""
+    },
+    {
+      "casa": "Cannot call non-static function",
+      "causa": "Chamou um método de instância direto na classe (ex: 'Node2D.get_position()') ou de dentro de função static.",
+      "correcao": "Chame no OBJETO: 'no.get_position()' / 'self.metodo()'. Funções static só chamam outras static.",
+      "exemplo": ""
+    },
+    {
+      "casa": "Invalid access to property or key",
+      "causa": "Runtime: acessou propriedade de um valor null (nó não encontrado, referência não inicializada) ou chave inexistente.",
+      "correcao": "Confira o caminho do nó ($Caminho) — get_node_or_null + checagem de null evita a quebra. Em Dictionary use .get(chave, padrao).",
+      "exemplo": "var alvo := get_node_or_null(\"Player\")\nif alvo != null:\n\talvo.receber_dano(10)"
+    },
+    {
+      "casa": "Invalid call. Nonexistent function",
+      "causa": "Runtime: chamou uma função que não existe naquele objeto (nome errado, objeto de tipo diferente do esperado, ou API do Godot 3).",
+      "correcao": "Confira a assinatura exata com godot_doc(classe, membro). Antes de chamar método de objeto desconhecido, proteja com has_method().",
+      "exemplo": "if corpo.has_method(\"receber_dano\"):\n\tcorpo.receber_dano(dano)"
+    },
+    {
+      "casa": "Node not found",
+      "causa": "Runtime: $Caminho/No não existe na cena (nome errado, nó ainda não está na árvore, ou o script roda antes do nó existir).",
+      "correcao": "Confira o nome EXATO do nó na .tscn (case-sensitive). Use @onready pra esperar a árvore montar; get_node_or_null pra não quebrar.",
+      "exemplo": "@onready var sprite: Sprite2D = $Sprite2D"
+    },
+    {
+      "casa": "Attempt to call function 'connect' in base 'null instance'",
+      "causa": "Runtime: o nó em que você tentou conectar o sinal é null (caminho errado ou nó ainda não instanciado).",
+      "correcao": "Garanta que a referência existe: @onready + caminho certo, ou conecte depois de add_child.",
+      "exemplo": ""
+    },
+    {
+      "casa": "Signal .* is already connected",
+      "casa_regex": true,
+      "causa": "Runtime: conectou o mesmo sinal duas vezes (ex: connect dentro de função chamada mais de uma vez).",
+      "correcao": "Conecte UMA vez (no _ready) ou proteja: 'if not sinal.is_connected(fn): sinal.connect(fn)'.",
+      "exemplo": "if not area.body_entered.is_connected(_ao_entrar):\n\tarea.body_entered.connect(_ao_entrar)"
+    },
+    {
+      "casa": "Division by zero",
+      "causa": "Runtime: divisão por zero — geralmente normalizar Vector2.ZERO ou dividir por variável não inicializada.",
+      "correcao": "Cheque antes: 'if dir != Vector2.ZERO: dir = dir.normalized()'. Divisão de int por int trunca; use float() se quiser fração.",
+      "exemplo": "var frac := float(vida) / float(vida_maxima)"
+    },
+    {
+      "casa": "Integer division",
+      "causa": "Aviso: divisão entre ints descarta a parte fracionária (7/2 == 3).",
+      "correcao": "Converta um lado pra float: 'float(a) / b' — ou use 7.0/2.",
+      "exemplo": "var media := float(soma) / quantidade"
+    },
+    {
+      "casa": "\"tool\" keyword was removed",
+      "causa": "'tool' no topo do script é Godot 3.",
+      "correcao": "Godot 4: anotação '@tool' na primeira linha.",
+      "exemplo": "@tool\nextends EditorPlugin"
+    },
+    {
+      "casa": "setget",
+      "causa": "'setget' é Godot 3.",
+      "correcao": "Godot 4: properties com get/set inline no var.",
+      "exemplo": "var vida: int = 100:\n\tset(valor):\n\t\tvida = clampi(valor, 0, 100)\n\t\tvida_mudou.emit(vida)"
+    },
+    {
+      "casa": "Pool",
+      "causa": "PoolXxxArray é Godot 3.",
+      "correcao": "Godot 4: PackedStringArray, PackedInt32Array, PackedFloat32Array, PackedVector2Array, PackedByteArray etc.",
+      "exemplo": "var nomes := PackedStringArray([\"a\", \"b\"])"
+    },
+    {
+      "casa": "Spatial",
+      "causa": "Spatial é Godot 3 — a base 3D mudou de nome.",
+      "correcao": "Godot 4: Node3D. Também: MeshInstance→MeshInstance3D, Area→Area3D, Camera→Camera3D, RigidBody→RigidBody3D.",
+      "exemplo": "extends Node3D"
+    },
+    {
+      "casa": "\"empty()\" not found",
+      "causa": "array.empty() é Godot 3.",
+      "correcao": "Godot 4: 'array.is_empty()' (vale pra Array, Dictionary, String, Packed*Array).",
+      "exemplo": "if fila.is_empty():\n\treturn"
+    },
+    {
+      "casa": "linear_interpolate",
+      "causa": "linear_interpolate() é Godot 3.",
+      "correcao": "Godot 4: 'a.lerp(b, t)' em vetores/cores; 'lerpf(a, b, t)' em floats; 'lerp_angle(a, b, t)' em ângulos.",
+      "exemplo": "global_position = global_position.lerp(alvo, 8.0 * delta)"
+    },
+    {
+      "casa": "\"clamped()\"",
+      "causa": "vector.clamped(comprimento) é Godot 3.",
+      "correcao": "Godot 4: 'vector.limit_length(comprimento)'. Pra escalares: clampf(x, min, max) / clampi.",
+      "exemplo": "velocity = velocity.limit_length(max_speed)"
+    },
+    {
+      "casa": "stepify",
+      "causa": "stepify() é Godot 3.",
+      "correcao": "Godot 4: 'snappedf(x, passo)' (ou snappedi / Vector2.snapped).",
+      "exemplo": "var alinhado := snappedf(pos.x, 16.0)"
+    },
+    {
+      "casa": "Function \"set_process\" not found in base",
+      "causa": "Chamou set_process num objeto que não é Node (ex: Resource, RefCounted).",
+      "correcao": "set_process/_process só existem em Node e descendentes. Confira o tipo do objeto.",
+      "exemplo": ""
+    },
+    {
+      "casa": "Could not preload resource file",
+      "causa": "O caminho do preload() não existe (typo, arquivo não criado ainda, ou extensão errada).",
+      "correcao": "Confira com list_dir se o arquivo existe EXATAMENTE nesse caminho res://. preload exige caminho literal constante; pra caminho dinâmico use load().",
+      "exemplo": "const BalaCena := preload(\"res://balas/bala.tscn\")"
+    },
+    {
+      "casa": "Busy setting up children",
+      "causa": "Runtime: mexeu na árvore (add_child/remove_child/reparent) durante uma notificação de setup dos filhos.",
+      "correcao": "Adie pro fim do frame: 'no.add_child.call_deferred(filho)' ou 'call_deferred(\"add_child\", filho)'.",
+      "exemplo": "get_tree().current_scene.add_child.call_deferred(bala)"
+    },
+    {
+      "casa": "Can't change this state while flushing queries",
+      "causa": "Runtime: mudou estado de física (posição, colisão, add_child de corpo) DENTRO de um callback de física (ex: body_entered).",
+      "correcao": "Use set_deferred ou call_deferred pra aplicar a mudança depois do passo de física.",
+      "exemplo": "collision_shape.set_deferred(\"disabled\", true)\nqueue_free()  # queue_free é seguro"
+    },
+    {
+      "casa": "Cannot get path of node as it is not in a scene tree",
+      "causa": "Runtime: usou global_position/get_node/get_tree num nó que ainda não entrou na árvore (antes do add_child).",
+      "correcao": "Defina a posição DEPOIS de add_child, ou use position (local). Em _init a árvore não existe; use _ready.",
+      "exemplo": "add_child(inst)\ninst.global_position = ponto"
+    },
+    {
+      "casa": "Parser Error: Expected closing",
+      "causa": "Parêntese/colchete/chave aberto e não fechado — ou aspas desbalanceadas.",
+      "correcao": "Conte os pares na linha apontada e na anterior. Strings com aspas dentro: use \\\" ou aspas simples por fora.",
+      "exemplo": ""
+    },
+    {
+      "casa": "Expected expression as function argument",
+      "causa": "Vírgula sobrando/faltando em chamada de função, ou argumento vazio.",
+      "correcao": "Confira a assinatura exata da função com godot_doc e ajuste os argumentos.",
+      "exemplo": ""
+    },
+    {
+      "casa": "Value of type \"String\" cannot be assigned to a variable of type",
+      "causa": "Tipagem: tentou pôr um valor de tipo diferente numa var tipada.",
+      "correcao": "Converta explicitamente (int(x), str(n), float(i)) ou corrija o tipo declarado.",
+      "exemplo": "@export var vida: int = 100\nvida = int(texto_valor)"
+    },
+    {
+      "casa": "is not a valid AnimationPlayer",
+      "causa": "O caminho apontado na propriedade (ex: do AnimationTree) não leva a um AnimationPlayer.",
+      "correcao": "Confira o NodePath no inspetor/na .tscn — precisa apontar pro nó certo.",
+      "exemplo": ""
+    },
+    {
+      "casa": "no loader found for resource",
+      "causa": "Runtime: tentou carregar um arquivo que o Godot não reconhece (extensão errada) ou que não existe.",
+      "correcao": "Confira caminho e extensão. Imagens em res:// precisam ter sido importadas pelo editor (existe o .import do lado?).",
+      "exemplo": ""
+    },
+    {
+      "casa": "Cannot infer the type of \"",
+      "causa": "Usou ':=' onde o Godot não consegue deduzir o tipo (ex: ':= null' ou função sem tipo de retorno).",
+      "correcao": "Declare o tipo explícito ('var x: Node = null') ou deixe sem tipagem ('var x = ...').",
+      "exemplo": "var alvo: Node2D = null"
+    },
+    {
+      "casa": "Assignment is not allowed inside an expression",
+      "causa": "Usou '=' (atribuição) dentro de um if/expressão — comparação é '=='.",
+      "correcao": "if x == 5: (comparar). Atribuição fica em linha própria.",
+      "exemplo": "if vida == 0:\n\tmorrer()"
+    },
+    {
+      "casa": "await\" cannot be used",
+      "causa": "await fora de contexto async válido, ou em _process sem cuidado.",
+      "correcao": "await funciona em qualquer func normal (viram corrotinas), mas NÃO em lambdas não-async nem em setters. Repense: talvez um Timer resolva melhor.",
+      "exemplo": ""
+    },
+    {
+      "casa": "Trying to assign value of type",
+      "causa": "Runtime: tipo incompatível ao atribuir (ex: Node genérico numa var tipada como CharacterBody2D).",
+      "correcao": "Faça cast: 'var corpo := no as CharacterBody2D' e cheque null, ou confira se o nó é do tipo esperado com 'is'.",
+      "exemplo": "if no is CharacterBody2D:\n\tvar corpo := no as CharacterBody2D"
+    }
+  ]
+}

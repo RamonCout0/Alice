@@ -1,0 +1,1 @@
+{"nome":"JointLimitation3D","herda":"Resource","breve":"A base class of the limitation that interacts with ChainIK3D.","descricao":"The limitation is attached to each joint and limits the rotation of the bone."}

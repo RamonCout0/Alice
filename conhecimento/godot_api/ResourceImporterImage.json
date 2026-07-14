@@ -1,0 +1,1 @@
+{"nome":"ResourceImporterImage","herda":"ResourceImporter","breve":"Imports an image for use in scripting, with no rendering capabilities.","descricao":"This importer imports Image resources, as opposed to CompressedTexture2D. If you need to render the image in 2D or 3D, use ResourceImporterTexture instead."}

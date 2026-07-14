@@ -1,0 +1,1 @@
+{"nome":"Panel","herda":"Control","breve":"A GUI control that displays a StyleBox.","descricao":"Panel is a GUI control that displays a StyleBox. See also PanelContainer.","itens_tema":[{"nome":"panel","tipo":"StyleBox","desc":"The StyleBox of this control."}]}

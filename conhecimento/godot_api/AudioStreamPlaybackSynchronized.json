@@ -1,0 +1,1 @@
+{"nome":"AudioStreamPlaybackSynchronized","herda":"AudioStreamPlayback","breve":"Playback class used for AudioStreamSynchronized.","descricao":"Playback component of AudioStreamSynchronized. Handles the playback of multiple AudioStreams in synchrony."}

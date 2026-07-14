@@ -6,28 +6,52 @@ de verdade, rodando 100% local no seu PC via [Ollama](https://ollama.com).
 
 ```
                  ┌──────────────┐
-   CLI (terminal)│              │  read_file / list_dir / search_code
-   Discord       │   core/      │  write_file / run_command
-   (futuro: web) │   Agent      │  + ferramentas MCP (git, filesystem, github…)
-                 │  (tool loop) │
-                 └──────┬───────┘
+   Web (navegador)│             │  read_file / write_file / run_command …
+   CLI (terminal) │   core/     │  godot: check_syntax / rodar / screenshot
+   Discord        │   Agent     │  conhecimento: buscar_padrao / godot_doc /
+   Plugin Godot   │  (tool loop)│    buscar_doc / diagnosticar_erro
+                 └──────┬───────┘  + ferramentas MCP (git, filesystem…)
                         │
-                   Ollama local (qwen2.5-coder:7b)
+                   Ollama local (qwen3:8b)
 ```
+
+## 🧩 Como ela programa Godot sem errar (método quebra-cabeça)
+
+Modelo pequeno não inventa código — ele **monta** com peças confiáveis:
+
+1. **`conhecimento/godot_4.json`** — biblioteca de padrões (blocos Lego) validados;
+   ela busca um esqueleto pronto e adapta.
+2. **`conhecimento/godot_api/`** — a documentação **oficial completa** do Godot 4.7
+   (1071 classes, gerada da tag `4.7-stable`): assinatura exata de todo método,
+   propriedade, sinal e constante. Ferramentas `godot_doc` e `buscar_doc`.
+3. **`conhecimento/godot_erros.json`** — dicionário de erros comuns (Godot 3→4,
+   GDScript, runtime). `check_godot_syntax` e `godot_rodar` anexam o diagnóstico
+   (causa + correção) automaticamente quando reconhecem o erro.
+4. Validação real: `check_godot_syntax` → `godot_rodar` → `godot_screenshot`,
+   e o que ela aprende e valida vira padrão novo com `salvar_padrao`.
 
 ## 📁 Estrutura
 
 ```
-Alice 2.0/
+Alice/
 ├── core/
 │   ├── config.py     # carrega config + personalidade, monta o system prompt
-│   ├── tools.py      # as "mãos": ler/escrever arquivo, buscar, rodar comando
+│   ├── tools.py      # as "mãos": arquivos, shell, godot, conhecimento
 │   ├── agent.py      # o "cérebro": loop de tool-calling com Ollama (streaming)
-│   └── memory.py     # salvar/carregar sessões
+│   ├── docs.py       # consulta à documentação oficial do Godot 4.7 embutida
+│   ├── biblioteca.py # biblioteca de padrões (blocos Lego) de GDScript
+│   ├── memory.py     # conversas persistentes
+│   └── longmemory.py # memória de longo prazo (fatos permanentes)
+├── conhecimento/
+│   ├── godot_api/    # documentação oficial 4.7 completa em JSON (1071 classes)
+│   ├── godot_4.json  # padrões validados (crescem com o tempo)
+│   └── godot_erros.json # erros comuns → causa + correção
 ├── mcp_bridge/
 │   └── bridge.py     # conecta servidores MCP reais ao loop do Ollama
 ├── frontends/
-│   ├── cli.py        # Alice no terminal (agente de código)
+│   ├── web/          # interface web (Tailwind local, markdown, código destacado)
+│   ├── webui.py      # servidor da interface web (stdlib pura)
+│   ├── cli.py        # Alice no terminal
 │   └── discord/bot.py# Alice no Discord (mesmo core)
 ├── config/
 │   ├── config.example.json
@@ -50,6 +74,11 @@ cp config/config.example.json config/config.json
 ```
 
 ## 🚀 Uso
+
+**Interface web (a principal):**
+```bash
+python -m frontends.webui        # abre http://127.0.0.1:7861
+```
 
 **No terminal (dentro de qualquer projeto):**
 ```bash

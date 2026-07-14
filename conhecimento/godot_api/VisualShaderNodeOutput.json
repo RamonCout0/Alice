@@ -1,0 +1,1 @@
+{"nome":"VisualShaderNodeOutput","herda":"VisualShaderNode","breve":"Represents the output shader parameters within the visual shader graph.","descricao":"This visual shader node is present in all shader graphs in form of \"Output\" block with multiple output value ports."}

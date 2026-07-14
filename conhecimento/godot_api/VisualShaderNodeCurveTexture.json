@@ -1,0 +1,1 @@
+{"nome":"VisualShaderNodeCurveTexture","herda":"VisualShaderNodeResizableBase","breve":"Performs a CurveTexture lookup within the visual shader graph.","descricao":"Comes with a built-in editor for texture's curves.","propriedades":[{"nome":"texture","tipo":"CurveTexture","desc":"The source texture."}]}

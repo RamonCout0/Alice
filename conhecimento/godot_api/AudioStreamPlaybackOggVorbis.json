@@ -1,0 +1,1 @@
+{"nome":"AudioStreamPlaybackOggVorbis","herda":"AudioStreamPlaybackResampled","breve":"Playback class used for AudioStreamOggVorbis.","descricao":"Playback component of AudioStreamOggVorbis. Uses OggPacketSequencePlayback for playback data."}

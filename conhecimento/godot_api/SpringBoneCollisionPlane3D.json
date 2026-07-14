@@ -1,0 +1,1 @@
+{"nome":"SpringBoneCollisionPlane3D","herda":"SpringBoneCollision3D","breve":"An infinite plane collision that interacts with SpringBoneSimulator3D.","descricao":"An infinite plane collision that interacts with SpringBoneSimulator3D. It is an infinite size XZ plane, and the +Y direction is treated as normal."}

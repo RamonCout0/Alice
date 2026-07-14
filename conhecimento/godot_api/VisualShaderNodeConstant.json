@@ -1,0 +1,1 @@
+{"nome":"VisualShaderNodeConstant","herda":"VisualShaderNode","breve":"A base type for the constants within the visual shader graph.","descricao":"This is an abstract class. See the derived types for descriptions of the possible values."}

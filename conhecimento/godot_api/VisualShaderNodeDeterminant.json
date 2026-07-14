@@ -1,0 +1,1 @@
+{"nome":"VisualShaderNodeDeterminant","herda":"VisualShaderNode","breve":"Calculates the determinant of a Transform3D within the visual shader graph.","descricao":"Translates to determinant(x) in the shader language."}
