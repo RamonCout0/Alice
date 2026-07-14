@@ -12,8 +12,12 @@
 #  continua válida — bastaria trocar a camada de transporte.
 # ============================================================
 import os
+import re
 import sys
 import asyncio
+
+# ela responde se marcada OU se chamarem o nome dela na mensagem
+_NOME_RX = re.compile(r"\balice\b", re.IGNORECASE)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -66,7 +70,7 @@ def agente_de(user_id: int) -> Agent:
 async def on_ready():
     print(f"Alice 2.0 online → {bot.user}  | modelo: {cfg.model}")
     await bot.change_presence(activity=discord.Activity(
-        type=discord.ActivityType.listening, name="@Alice pra codar!"))
+        type=discord.ActivityType.listening, name="é só me chamar de Alice 💬"))
 
 
 @bot.event
@@ -74,7 +78,11 @@ async def on_message(message: discord.Message):
     if message.author.bot:
         return
     await bot.process_commands(message)
-    if bot.user not in message.mentions:
+    # responde se: for marcada (@Alice), for resposta a ela, ou citarem o nome "Alice"
+    mencionada = bot.user in message.mentions
+    respondendo = bool(message.reference) and getattr(message.reference.resolved, "author", None) == bot.user
+    pelo_nome = bool(_NOME_RX.search(message.content))
+    if not (mencionada or respondendo or pelo_nome):
         return
 
     pergunta = message.content.replace(f"<@{bot.user.id}>", "").strip()
