@@ -41,6 +41,7 @@ def _estado() -> dict:
         "model": cfg.model, "temperature": cfg.temperature, "num_ctx": cfg.num_ctx,
         "ollama_host": cfg.ollama_host, "workdir": os.path.abspath(cfg.workdir),
         "godot_bin": cfg.godot_bin, "conv_atual": conv_atual,
+        "pasta_referencia": cfg.pasta_referencia,
     }
 
 
@@ -51,7 +52,7 @@ def _reconstruir_prompt():
 
 def _salvar_config(mudancas: dict):
     campos = {"model", "temperature", "num_ctx", "ollama_host", "workdir",
-              "godot_bin", "confirm_commands"}
+              "godot_bin", "confirm_commands", "pasta_referencia"}
     aplicadas = {}
     for k, v in mudancas.items():
         if k not in campos:
@@ -65,7 +66,8 @@ def _salvar_config(mudancas: dict):
         setattr(cfg, k, v)
         aplicadas[k] = v
     # reconfigura as "mãos" (workdir/godot podem ter mudado)
-    tools.configure(workdir=cfg.workdir, confirm_cb=None, godot_bin=cfg.godot_bin)
+    tools.configure(workdir=cfg.workdir, confirm_cb=None, godot_bin=cfg.godot_bin,
+                    reference_dir=cfg.pasta_referencia)
     _reconstruir_prompt()
     # persiste no config.json
     try:
@@ -206,6 +208,7 @@ PAGINA = r"""<!doctype html>
     <div class="campo"><label>Ollama host</label><input type="text" id="c_host"></div>
     <div class="campo"><label>Projeto atual (workdir)</label><input type="text" id="c_wd" spellcheck="false"></div>
     <div class="campo"><label>Binário do Godot (godot_bin)</label><input type="text" id="c_godot" spellcheck="false"></div>
+    <div class="campo"><label>Pasta de referência (só leitura — pra reproduzir um projeto)</label><input type="text" id="c_ref" spellcheck="false"></div>
     <div class="rodape">
       <button class="btn" onclick="fecha('ovCfg')">cancelar</button>
       <button class="btn" id="salvarCfg" style="background:var(--accent);color:#1a1024;border:none">salvar</button>
@@ -310,11 +313,13 @@ function enviar(){
 /* ---- config ---- */
 $('btnCfg').onclick=()=>{ $('c_model').value=estado.model; $('c_temp').value=estado.temperature;
   $('c_ctx').value=estado.num_ctx; $('c_host').value=estado.ollama_host;
-  $('c_wd').value=estado.workdir; $('c_godot').value=estado.godot_bin; abre('ovCfg'); };
+  $('c_wd').value=estado.workdir; $('c_godot').value=estado.godot_bin;
+  $('c_ref').value=estado.pasta_referencia||''; abre('ovCfg'); };
 $('salvarCfg').onclick=async()=>{
   await post('/config',{ model:$('c_model').value.trim(), temperature:+$('c_temp').value,
     num_ctx:+$('c_ctx').value, ollama_host:$('c_host').value.trim(),
-    workdir:$('c_wd').value.trim(), godot_bin:$('c_godot').value.trim() });
+    workdir:$('c_wd').value.trim(), godot_bin:$('c_godot').value.trim(),
+    pasta_referencia:$('c_ref').value.trim() });
   await carregarEstado(); fecha('ovCfg');
 };
 

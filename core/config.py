@@ -23,6 +23,8 @@ class Config:
     discord_token: str    = ""
     owner_discord_id: int = 0
     godot_bin: str        = ""
+    pasta_referencia: str = ""   # projeto de referência que a Alice pode LER (não editar)
+    max_tool_rounds: int  = 40   # teto de rodadas de ferramenta por mensagem (anti-loop)
     mcp_servers: dict     = field(default_factory=dict)
 
 
@@ -60,6 +62,20 @@ def build_system_prompt(cfg: Config) -> str:
         "o código REAL antes de responder — nunca invente o conteúdo de um arquivo. Quando o "
         "Ramon te contar uma preferência, decisão ou convenção que valha pra sempre, use "
         "'lembrar' pra não esquecer.\n"
-        f"Diretório do projeto atual: {os.path.abspath(cfg.workdir)}"
+        f"Diretório do projeto atual (onde você CRIA/EDITA): {os.path.abspath(cfg.workdir)}"
     )
-    return pers["system"].strip() + guia + longmemory.texto_para_prompt()
+    ref = ""
+    if cfg.pasta_referencia:
+        ref = (
+            "\n\nMODO REPRODUÇÃO: existe um projeto de REFERÊNCIA que você pode LER "
+            "(mas NUNCA editar) com as ferramentas ler_referencia (ler arquivo) e "
+            "listar_referencia (listar pasta). Seu trabalho é reproduzir — e MELHORAR "
+            "mecanicamente — esse projeto dentro do seu diretório atual. Método: "
+            "listar_referencia pra mapear a estrutura → ler_referencia de cada arquivo "
+            "→ recriar o equivalente com write_file no seu diretório → check_godot_syntax "
+            "→ godot_rodar → godot_screenshot → corrigir. Comece pelos autoloads/Managers "
+            "(tudo depende deles) e só então arenas e entidades. Corrija erros de LÓGICA "
+            "que encontrar no original em vez de copiar cegamente.\n"
+            f"Pasta de referência (só leitura): {os.path.abspath(cfg.pasta_referencia)}"
+        )
+    return pers["system"].strip() + guia + ref + longmemory.texto_para_prompt()

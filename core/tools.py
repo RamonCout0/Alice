@@ -11,6 +11,7 @@ import pathlib
 import subprocess
 
 _WORKDIR: pathlib.Path = pathlib.Path(".").resolve()
+_REFDIR: pathlib.Path | None = None  # projeto de referência (só leitura), se houver
 # onde o último screenshot renderizado é guardado (a interface web exibe)
 ULTIMO_SCREENSHOT = pathlib.Path(__file__).resolve().parent.parent / "ultimo_screenshot.png"
 _CONFIRM = None  # callback(cmd: str) -> bool ; definido pelo frontend
@@ -37,12 +38,14 @@ def _sem_confirmacao_real() -> bool:
     return _CONFIRM is None
 
 
-def configure(workdir: str = ".", confirm_cb=None, godot_bin: str = ""):
-    """Define a raiz do projeto, o callback de confirmação e o binário do Godot."""
-    global _WORKDIR, _CONFIRM, _GODOT_BIN
+def configure(workdir: str = ".", confirm_cb=None, godot_bin: str = "", reference_dir: str = ""):
+    """Define a raiz do projeto, o callback de confirmação, o binário do Godot e
+    (opcional) uma pasta de referência que pode ser LIDA mas nunca escrita."""
+    global _WORKDIR, _CONFIRM, _GODOT_BIN, _REFDIR
     _WORKDIR = pathlib.Path(workdir).resolve()
     _CONFIRM = confirm_cb
     _GODOT_BIN = godot_bin
+    _REFDIR = pathlib.Path(reference_dir).resolve() if reference_dir else None
 
 
 def _safe(path: str) -> pathlib.Path:
@@ -145,6 +148,43 @@ def check_godot_syntax(path: str) -> str:
     if r.returncode == 0 and "SCRIPT ERROR" not in saida and "ERROR" not in saida:
         return f"OK — {path} sem erros de sintaxe."
     return saida[:6000] or f"Falhou (código {r.returncode}), sem detalhes na saída."
+
+
+def _safe_ref(path: str) -> pathlib.Path:
+    """Resolve um caminho DENTRO da pasta de referência (só leitura)."""
+    if _REFDIR is None:
+        raise ValueError("Não há pasta de referência configurada.")
+    p = (_REFDIR / path).resolve()
+    if _REFDIR != p and _REFDIR not in p.parents:
+        raise ValueError(f"Acesso negado fora da referência: {path}")
+    return p
+
+
+def ler_referencia(path: str) -> str:
+    """Lê um arquivo do projeto de REFERÊNCIA (só leitura) para você reproduzi-lo.
+    Ex: ler_referencia('Manager/EventBus.gd'). Use junto com listar_referencia."""
+    if _REFDIR is None:
+        return "Não há projeto de referência configurado."
+    p = _safe_ref(path)
+    if not p.is_file():
+        return f"Arquivo de referência não encontrado: {path}"
+    return p.read_text(encoding="utf-8", errors="replace")[:20000]
+
+
+def listar_referencia(path: str = ".") -> str:
+    """Lista arquivos/pastas do projeto de REFERÊNCIA. Use pra mapear a estrutura
+    que você precisa reproduzir. Ex: listar_referencia('Manager')."""
+    if _REFDIR is None:
+        return "Não há projeto de referência configurado."
+    p = _safe_ref(path)
+    if not p.is_dir():
+        return f"Pasta de referência não encontrada: {path}"
+    itens = []
+    for c in sorted(p.iterdir(), key=lambda x: (x.is_file(), x.name.lower())):
+        if c.name in _IGNORAR or c.name.startswith("."):
+            continue
+        itens.append(c.name + ("/" if c.is_dir() else ""))
+    return "\n".join(itens) or "(vazio)"
 
 
 def lembrar(fato: str, tag: str = "geral") -> str:
@@ -269,4 +309,4 @@ def godot_screenshot(cena: str = "", frames: int = 90) -> str:
 
 LOCAL_TOOLS = [read_file, list_dir, write_file, search_code, run_command,
                check_godot_syntax, godot_project_info, godot_rodar,
-               godot_screenshot, lembrar]
+               godot_screenshot, ler_referencia, listar_referencia, lembrar]

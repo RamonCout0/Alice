@@ -117,7 +117,14 @@ class Agent:
         """
         self.messages.append({"role": "user", "content": user_msg})
 
+        teto = getattr(self.cfg, "max_tool_rounds", 40)
+        rodada = 0
         while True:  # repete enquanto a Alice pedir ferramentas
+            rodada += 1
+            if rodada > teto:
+                yield ("text", f"\n\n[parei: atingi o limite de {teto} rodadas de ferramenta "
+                               "numa só mensagem — provável loop. Me diga como seguir.]")
+                return
             content, tool_calls = "", []
             # segura a resposta inteira da rodada (sem mostrar token a token):
             # o modelo às vezes mistura texto normal com uma tool call em JSON
