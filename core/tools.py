@@ -48,9 +48,21 @@ def configure(workdir: str = ".", confirm_cb=None, godot_bin: str = "", referenc
     _REFDIR = pathlib.Path(reference_dir).resolve() if reference_dir else None
 
 
+def _rel(path: str) -> str:
+    """Aceita caminhos estilo Godot: 'res://X' e 'user://X' viram relativos ao
+    projeto, e uma '/' inicial é removida. Assim a Alice pode usar exatamente o
+    caminho que o editor mostra (ex: res://Player/player.gd)."""
+    p = (path or "").strip()
+    for pref in ("res://", "user://"):
+        if p.startswith(pref):
+            p = p[len(pref):]
+            break
+    return p.lstrip("/")
+
+
 def _safe(path: str) -> pathlib.Path:
     """Resolve o caminho e garante que ele fica DENTRO do workdir."""
-    p = (_WORKDIR / path).resolve()
+    p = (_WORKDIR / _rel(path)).resolve()
     if _WORKDIR != p and _WORKDIR not in p.parents:
         raise ValueError(f"Acesso negado fora do projeto: {path}")
     return p
@@ -154,7 +166,7 @@ def _safe_ref(path: str) -> pathlib.Path:
     """Resolve um caminho DENTRO da pasta de referência (só leitura)."""
     if _REFDIR is None:
         raise ValueError("Não há pasta de referência configurada.")
-    p = (_REFDIR / path).resolve()
+    p = (_REFDIR / _rel(path)).resolve()
     if _REFDIR != p and _REFDIR not in p.parents:
         raise ValueError(f"Acesso negado fora da referência: {path}")
     return p
