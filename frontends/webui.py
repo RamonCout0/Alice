@@ -26,6 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.config import load_config, build_system_prompt, CONFIG_JSON
 from core.agent import Agent
 from core import tools, memory, longmemory
+from mcp_bridge.bridge import carregar_mcp
 
 # ------------------------------------------------------------------ estado
 import time
@@ -34,7 +35,8 @@ from collections import deque
 cfg = load_config()
 tools.configure(workdir=cfg.workdir, confirm_cb=None, godot_bin=cfg.godot_bin,
                 reference_dir=cfg.pasta_referencia)
-alice = Agent(cfg, build_system_prompt(cfg))
+_extra_tools, _extra_dispatch = carregar_mcp(cfg)
+alice = Agent(cfg, build_system_prompt(cfg), _extra_tools, _extra_dispatch)
 conv_atual = memory.novo_id()          # id da conversa em andamento
 _lock = threading.Lock()               # uma geração por vez
 

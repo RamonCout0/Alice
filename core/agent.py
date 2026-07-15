@@ -125,27 +125,64 @@ class Agent:
                 yield ("text", f"\n\n[parei: atingi o limite de {teto} rodadas de ferramenta "
                                "numa só mensagem — provável loop. Me diga como seguir.]")
                 return
-            content, tool_calls = "", []
             # segura a resposta inteira da rodada (sem mostrar token a token):
             # o modelo às vezes mistura texto normal com uma tool call em JSON
             # solto no meio ou no fim, então só dá pra saber com segurança se é
             # uma chamada de ferramenta depois que a rodada termina.
-            for part in self.client.chat(
-                model=self.cfg.model,
-                messages=self.messages,
-                tools=self.tools_param,
-                stream=True,
-                options={"temperature": self.cfg.temperature,
-                         "num_ctx": self.cfg.num_ctx},
-            ):
-                m = part["message"]
-                if m.get("content"):
-                    content += m["content"]
-                if m.get("tool_calls"):
-                    tool_calls += m["tool_calls"]
+            tentativas_vazias, nudges = 0, 0
+            while True:
+                content, tool_calls = "", []
+                for part in self.client.chat(
+                    model=self.cfg.model,
+                    messages=self.messages,
+                    tools=self.tools_param,
+                    stream=True,
+                    think=False,  # modelos "thinking" (qwen3) às vezes gastam todo o
+                                  # orçamento de geração "pensando" e nunca emitem o
+                                  # tool_call/content de verdade — a rodada termina
+                                  # vazia. Ferramentas locais já dão o raciocínio
+                                  # estruturado (padrão/doc/erro); ela não precisa
+                                  # deliberar em voz alta pra usá-las.
+                    options={"temperature": self.cfg.temperature,
+                             "num_ctx": self.cfg.num_ctx},
+                ):
+                    m = part["message"]
+                    if m.get("content"):
+                        content += m["content"]
+                    if m.get("tool_calls"):
+                        tool_calls += m["tool_calls"]
 
-            if not tool_calls:
-                tool_calls = _extract_fallback_tool_calls(content)
+                if not tool_calls:
+                    tool_calls = _extract_fallback_tool_calls(content)
+                if tool_calls or content:
+                    break  # rodada válida — segue o fluxo normal
+
+                # Achado real rodando o teste do Raido: o Ollama às vezes gera
+                # uma resposta inteira (centenas de tokens, minutos de trabalho)
+                # que o parser de tool-call dele descarta por completo —
+                # 'content' e 'tool_calls' voltam vazios, de forma DETERMINÍSTICA
+                # pro mesmo prompt (confirmado repetindo a chamada idêntica 3x).
+                # Repetir do jeito que está não adianta; um empurrão muda o
+                # prompt o suficiente pra sair do resultado travado. O nudge é
+                # removido do histórico depois — não é uma mensagem real.
+                tentativas_vazias += 1
+                if tentativas_vazias >= 3:
+                    break
+                self.messages.append({
+                    "role": "user",
+                    "content": "(sua última resposta saiu vazia — responda AGORA "
+                               "com uma chamada de ferramenta ou com texto.)",
+                })
+                nudges += 1
+
+            if nudges:
+                del self.messages[len(self.messages) - nudges:]
+
+            if not tool_calls and not content:
+                yield ("text", "\n\n[a resposta saiu vazia mesmo depois de tentar de novo "
+                               "— pode ser sobrecarga do modelo local; tente reformular ou "
+                               "repetir o pedido.]")
+                return
 
             assistant = {"role": "assistant", "content": "" if tool_calls else content}
             if tool_calls:

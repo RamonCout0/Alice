@@ -103,8 +103,16 @@ def carregar_mcp(cfg):
     """
     if not cfg.mcp_servers:
         return [], {}
+    servers = cfg.mcp_servers
+    # o servidor 'godot' (@coding-solo/godot-mcp) precisa do binário do Godot
+    # via env GODOT_PATH — injeta a partir de cfg.godot_bin (mesma fonte que
+    # as ferramentas locais usam) em vez de duplicar o caminho no config.json,
+    # senão os dois driftam quando o Ramon muda godot_bin pela interface.
+    godot_srv = servers.get("godot")
+    if isinstance(godot_srv, dict) and cfg.godot_bin and not (godot_srv.get("env") or {}).get("GODOT_PATH"):
+        servers = {**servers, "godot": {**godot_srv, "env": {**(godot_srv.get("env") or {}), "GODOT_PATH": cfg.godot_bin}}}
     try:
-        mgr = MCPManager(cfg.mcp_servers, workdir=os.path.abspath(cfg.workdir))
+        mgr = MCPManager(servers, workdir=os.path.abspath(cfg.workdir))
         n = mgr.start()
         if n == 0:
             return [], {}
