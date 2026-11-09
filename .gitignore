@@ -9,3 +9,6 @@ venv/
 .venv/
 *.log
 assets/alice*
+config/perfil_dono.md
+estado_navi.json
+estado_pessoas.json

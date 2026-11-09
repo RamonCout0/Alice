@@ -25,6 +25,11 @@ class Config:
     godot_bin: str        = ""
     pasta_referencia: str = ""   # projeto de referência que a Alice pode LER (não editar)
     max_tool_rounds: int  = 40   # teto de rodadas de ferramenta por mensagem (anti-loop)
+    # --- modo leve (modelo 8B local, PC compartilhado) ---
+    max_historico: int    = 0    # 0 = sem limite; N = mantém só as últimas N mensagens (fora o system)
+    num_predict: int      = 0    # 0 = sem limite; N = teto de tokens por resposta
+    repeat_penalty: float = 1.0  # >1 reduz repetição de frases (bom p/ resenha)
+    keep_alive: str       = "10m"  # quanto tempo o modelo fica na VRAM depois do uso
     mcp_servers: dict     = field(default_factory=dict)
 
 
@@ -46,8 +51,15 @@ def build_system_prompt(cfg: Config, modo: str = "agente") -> str:
     """Monta o system prompt. modo='agente' (web/plugin: personalidade completa +
     guia de ferramentas) ou modo='conversa' (Discord: só a persona leve, sem o
     despejo técnico, pra não ficar seca/repetitiva)."""
-    from core import longmemory
+    from core import longmemory, navi
     pers = load_personalidade()
+    if modo in ("gm", "gm_dono") and pers.get("persona_gm"):
+        # NAVI GM (segunda IRIS). O perfil e a memória de longo prazo contêm dados
+        # pessoais do Ramon, então só entram no modo 'gm_dono' — nunca p/ os outros.
+        base = pers["persona_gm"].strip() + navi.ficha_para_prompt()
+        if modo == "gm_dono":
+            base += navi.perfil_dono_para_prompt() + longmemory.texto_para_prompt()
+        return base
     if modo == "conversa" and pers.get("persona_discord"):
         return pers["persona_discord"].strip() + longmemory.texto_para_prompt()
     guia = (

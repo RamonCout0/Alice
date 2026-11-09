@@ -5,3 +5,6 @@ mcp>=1.0.0
 
 # --- opcional: frontend Discord ---
 discord.py>=2.3
+
+# --- opcional: busca na web da Alice (DuckDuckGo) ---
+ddgs>=9.0

@@ -2,10 +2,15 @@
   "model": "qwen3:8b",
   "ollama_host": "http://localhost:11434",
   "num_ctx": 16384,
-  "temperature": 0.4,
+  "temperature": 0.5,
   "workdir": ".",
   "confirm_commands": true,
   "max_tool_chars": 12000,
+
+  "max_historico": 16,
+  "num_predict": 220,
+  "repeat_penalty": 1.1,
+  "keep_alive": "10m",
 
   "discord_token": "",
   "owner_discord_id": 0,

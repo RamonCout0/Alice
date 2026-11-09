@@ -98,6 +98,27 @@ class Agent:
             for nome, fn in extra_dispatch.items():
                 self.dispatch.setdefault(nome, fn)
 
+    # -------------------------------------------------- modo leve
+    def _opcoes(self) -> dict:
+        op = {"temperature": self.cfg.temperature, "num_ctx": self.cfg.num_ctx}
+        if self.cfg.num_predict > 0:
+            op["num_predict"] = self.cfg.num_predict
+        if self.cfg.repeat_penalty != 1.0:
+            op["repeat_penalty"] = self.cfg.repeat_penalty
+        return op
+
+    def _podar(self):
+        """Janela deslizante: mantém o system prompt + as últimas `max_historico`
+        mensagens. Corta sempre num limite de turno (começa em 'user'), pra não
+        deixar um resultado de ferramenta órfão sem a chamada que o originou."""
+        limite = self.cfg.max_historico
+        if limite <= 0 or len(self.messages) - 1 <= limite:
+            return
+        resto = self.messages[1:][-limite:]
+        while resto and resto[0].get("role") != "user":
+            resto.pop(0)
+        self.messages = self.messages[:1] + resto
+
     # -------------------------------------------------- execução de ferramenta
     def _run_tool(self, name: str, args: dict) -> str:
         fn = self.dispatch.get(name)
@@ -116,6 +137,7 @@ class Agent:
           ("tool", (nome, args))    -> ela chamou uma ferramenta
         """
         self.messages.append({"role": "user", "content": user_msg})
+        self._podar()
 
         teto = getattr(self.cfg, "max_tool_rounds", 40)
         rodada = 0
@@ -143,8 +165,8 @@ class Agent:
                                   # vazia. Ferramentas locais já dão o raciocínio
                                   # estruturado (padrão/doc/erro); ela não precisa
                                   # deliberar em voz alta pra usá-las.
-                    options={"temperature": self.cfg.temperature,
-                             "num_ctx": self.cfg.num_ctx},
+                    options=self._opcoes(),
+                    keep_alive=self.cfg.keep_alive,
                 ):
                     m = part["message"]
                     if m.get("content"):
