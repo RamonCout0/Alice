@@ -16,7 +16,7 @@ from alice import memoria
 from alice import seguranca as seg
 from alice.config import DADOS, persona
 from alice.ferramentas import rpg
-from alice.llm import LLM
+from alice.llm import LLM, ModeloAusente
 
 ARQ_GUARDA = DADOS / "guarda.json"
 
@@ -115,6 +115,8 @@ class Cerebro:
             try:
                 saida = await self.llm.conversar(mensagens, ctx, usar_ferramentas=not injecao,
                                                  ao_usar=ao_usar)
+            except ModeloAusente as e:
+                return Resposta(f"Tô sem cérebro: {e}", motivo="erro")
             except Exception as e:
                 return Resposta(f"meu cérebro (Ollama) não respondeu agora: {type(e).__name__}. "
                                 "Confere se ele está rodando?", motivo="erro")

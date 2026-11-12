@@ -52,6 +52,10 @@ def extrair_chamadas(conteudo: str, validos: set[str]) -> list[dict]:
     return saida
 
 
+class ModeloAusente(RuntimeError):
+    pass
+
+
 class LLM:
     def __init__(self, cfg):
         self.cfg = cfg
@@ -98,8 +102,19 @@ class LLM:
         if r.status_code == 400 and tools and "tools" in r.text:   # modelo sem tool-calling
             corpo.pop("tools")
             r = await self.http.post("/api/chat", json=corpo)
+        if r.status_code == 404:
+            raise ModeloAusente(f"o modelo `{self.cfg.modelo}` não está baixado no Ollama. "
+                                f"Rode `ollama pull {self.cfg.modelo}` ou troque \"modelo\" em config/alice.json.")
         r.raise_for_status()
         return r.json()["message"]
+
+    async def modelos_instalados(self) -> list[str] | None:
+        """Nomes dos modelos no Ollama; None se o Ollama não respondeu."""
+        try:
+            r = await self.http.get("/api/tags")
+            return [m["name"] for m in r.json().get("models", [])]
+        except (httpx.HTTPError, ValueError):
+            return None
 
     async def completar(self, sistema: str, pedido: str, temperatura: float | None = None,
                         formato=None) -> str:

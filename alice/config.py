@@ -103,7 +103,9 @@ class Config:
 
 
 def carregar(caminho: Path | None = None) -> Config:
-    origem = caminho or (CONFIG_JSON if CONFIG_JSON.exists() else CONFIG_EXEMPLO)
+    # O exemplo NUNCA é lido como config: ele é versionado, e preencher o token
+    # nele é o caminho mais curto para vazar o token num commit.
+    origem = caminho or CONFIG_JSON
     dados = {}
     if origem.exists():
         dados = json.loads(origem.read_text(encoding="utf-8"))

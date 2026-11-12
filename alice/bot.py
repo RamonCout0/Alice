@@ -83,6 +83,13 @@ class Alice(discord.Client):
         pequeno = await self.cerebro.llm.pequeno()
         log.info("Alice online como %s · modelo %s (%s) · %d ferramentas", self.user, self.cfg.modelo,
                  "pequeno → pesquisa ativa" if pequeno else "grande", len(fer.nomes()))
+        instalados = await self.cerebro.llm.modelos_instalados()
+        if instalados is None:
+            log.error("O Ollama não respondeu em %s — abra o Ollama antes de conversar.", self.cfg.ollama_host)
+        elif self.cfg.modelo not in instalados and f"{self.cfg.modelo}:latest" not in instalados:
+            log.error("O modelo %s NÃO está baixado. Rode `ollama pull %s` ou troque \"modelo\" em "
+                      "config/alice.json. Instalados: %s", self.cfg.modelo, self.cfg.modelo,
+                      ", ".join(instalados) or "nenhum")
         await self.change_presence(activity=discord.Activity(
             type=discord.ActivityType.listening, name="é só me chamar de Alice"))
 
@@ -674,6 +681,9 @@ def registrar_comandos(bot: Alice):
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     cfg = cfgmod.carregar()
+    if not cfgmod.CONFIG_JSON.exists():
+        log.warning("config/alice.json não existe — usando os padrões. Copie config/alice.example.json "
+                    "para config/alice.json e edite a CÓPIA (o exemplo vai pro GitHub).")
     if not cfg.discord_token:
         raise SystemExit("Falta o token: defina a variável DISCORD_TOKEN (ou discord_token em config/alice.json).")
     if not cfg.dono_id:

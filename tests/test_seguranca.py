@@ -77,3 +77,11 @@ def test_guarda_castigo_e_limite():
     assert not g.registrar_tentativa(1, seg.DONO)          # dono nunca toma castigo
     g.bloqueados.add(30)
     assert g.nivel(30, seg.REGULAR) == seg.BLOQUEADO and g.nivel(1, seg.DONO) == seg.DONO
+
+
+def test_arquivo_de_exemplo_nunca_tem_segredo():
+    """O exemplo vai pro GitHub: token e dono ficam vazios nele, sempre."""
+    import json
+    from alice.config import CONFIG_EXEMPLO
+    exemplo = json.loads(CONFIG_EXEMPLO.read_text(encoding="utf-8"))
+    assert exemplo["discord_token"] == "" and exemplo["dono_id"] == 0
