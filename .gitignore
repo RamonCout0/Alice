@@ -1,11 +1,9 @@
-config/config.json
-sessions/
-conversas/
-memoria_longa.json
-ultimo_screenshot.png
+config/alice.json
+dados/
 __pycache__/
 *.pyc
 venv/
 .venv/
+.pytest_cache/
 *.log
-assets/alice*
+amostras/

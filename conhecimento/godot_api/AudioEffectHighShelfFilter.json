@@ -1,1 +1,0 @@
-{"nome":"AudioEffectHighShelfFilter","herda":"AudioEffectFilter","breve":"Adds a high-shelf filter to an audio bus.","descricao":"A \"high-shelf\" filter controls the gain of all frequencies above 'AudioEffectFilter.cutoff_hz'.\nThis filter can be used to increase or decrease clarity of a sound."}

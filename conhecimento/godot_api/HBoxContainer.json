@@ -1,1 +1,0 @@
-{"nome":"HBoxContainer","herda":"BoxContainer","breve":"A container that arranges its child controls horizontally.","descricao":"A variant of BoxContainer that can only arrange its child controls horizontally. Child controls are rearranged automatically when their minimum size changes."}

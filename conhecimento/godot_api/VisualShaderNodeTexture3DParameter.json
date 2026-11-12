@@ -1,1 +1,0 @@
-{"nome":"VisualShaderNodeTexture3DParameter","herda":"VisualShaderNodeTextureParameter","breve":"Provides a 3D texture parameter within the visual shader graph.","descricao":"Translated to uniform sampler3D in the shader language."}

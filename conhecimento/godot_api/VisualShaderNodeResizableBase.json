@@ -1,1 +1,0 @@
-{"nome":"VisualShaderNodeResizableBase","herda":"VisualShaderNode","breve":"Base class for resizable nodes in a visual shader graph.","descricao":"Resizable nodes have a handle that allows the user to adjust their size as needed.","propriedades":[{"nome":"size","tipo":"Vector2","padrao":"Vector2(0, 0)","desc":"The size of the node in the visual shader graph."}]}

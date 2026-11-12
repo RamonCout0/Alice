@@ -1,1 +1,0 @@
-{"nome":"VisualShaderNodeScreenNormalWorldSpace","herda":"VisualShaderNode","breve":"A visual shader node that unpacks the screen normal texture in World Space.","descricao":"The ScreenNormalWorldSpace node allows to create outline effects."}

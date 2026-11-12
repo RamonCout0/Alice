@@ -1,1 +1,0 @@
-{"nome":"VisualShaderNodeTextureSDF","herda":"VisualShaderNode","breve":"Performs an SDF (signed-distance field) texture lookup within the visual shader graph.","descricao":"Translates to texture_sdf(sdf_pos) in the shader language."}

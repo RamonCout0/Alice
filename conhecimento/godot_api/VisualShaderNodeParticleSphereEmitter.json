@@ -1,1 +1,0 @@
-{"nome":"VisualShaderNodeParticleSphereEmitter","herda":"VisualShaderNodeParticleEmitter","breve":"A visual shader node that makes particles emitted in a sphere shape.","descricao":"VisualShaderNodeParticleEmitter that makes the particles emitted in sphere shape with the specified inner and outer radii."}

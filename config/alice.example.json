@@ -1,0 +1,47 @@
+{
+  "modelo": "qwen3:8b",
+  "ollama_host": "http://localhost:11434",
+  "num_ctx": 8192,
+  "temperatura": 0.7,
+  "pequeno_ate_b": 9.0,
+
+  "discord_token": "",
+  "dono_id": 0,
+  "confiaveis": [],
+  "servidor_id": 0,
+  "nomes_gatilho": ["alice"],
+  "rolagem_automatica": true,
+
+  "comfy_url": "http://127.0.0.1:8188",
+  "comfy_modelos": {
+    "anime": "waiIllustriousSDXL_v150.safetensors",
+    "realista": "juggernautXL_ragnarokBy.safetensors",
+    "pixel": "waiIllustriousSDXL_v150.safetensors"
+  },
+  "comfy_lora_pixel": "pixel-art-xl.safetensors",
+  "liberar_vram": true,
+  "imagens_por_hora": 6,
+
+  "gatuno_url": "https://gatunoestrelas.com.br",
+  "gatuno_intervalo_min": 15,
+  "canal_novidades_id": 0,
+
+  "argos_dir": "",
+  "argos_projetos": {},
+
+  "voz": {
+    "motor": "edge",
+    "voz_edge": "pt-BR-ThalitaNeural",
+    "tom": "+38Hz",
+    "velocidade": "+8%",
+    "chipforge_dir": "",
+    "comando_externo": [],
+    "seguir_dono": true
+  },
+  "escuta": {
+    "ativa": true,
+    "modelo": "small",
+    "precisa_chamar": true
+  },
+  "pasta_musicas": ""
+}

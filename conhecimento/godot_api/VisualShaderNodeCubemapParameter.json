@@ -1,1 +1,0 @@
-{"nome":"VisualShaderNodeCubemapParameter","herda":"VisualShaderNodeTextureParameter","breve":"A Cubemap parameter node to be used within the visual shader graph.","descricao":"Translated to uniform samplerCube in the shader language. The output value can be used as port for VisualShaderNodeCubemap."}

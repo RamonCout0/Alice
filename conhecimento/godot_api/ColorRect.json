@@ -1,1 +1,0 @@
-{"nome":"ColorRect","herda":"Control","breve":"A control that displays a solid color rectangle.","descricao":"Displays a rectangle filled with a solid 'color'. If you need to display the border alone, consider using a Panel instead.","propriedades":[{"nome":"color","tipo":"Color","padrao":"Color(1, 1, 1, 1)","desc":"The fill color of the rectangle."}]}

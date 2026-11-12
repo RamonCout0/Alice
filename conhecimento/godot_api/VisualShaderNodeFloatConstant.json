@@ -1,1 +1,0 @@
-{"nome":"VisualShaderNodeFloatConstant","herda":"VisualShaderNodeConstant","breve":"A scalar floating-point constant to be used within the visual shader graph.","descricao":"Translated to [code skip-lint]float in the shader language.","propriedades":[{"nome":"constant","tipo":"float","padrao":"0.0","desc":"A floating-point constant which represents a state of this node."}]}

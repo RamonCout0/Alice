@@ -1,1 +1,0 @@
-{"nome":"Texture","herda":"Resource","breve":"Base class for all texture types.","descricao":"Texture is the base class for all texture types. Common texture types are Texture2D and ImageTexture. See also Image."}

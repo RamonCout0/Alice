@@ -1,7 +1,19 @@
-ollama>=0.4.0
+# Alice 3
+discord.py[voice]>=2.7
+httpx>=0.28
+ddgs>=9.0
+pillow>=11
+numpy>=2
+edge-tts>=7
+yt-dlp
+pypdf>=5
 
-# --- opcional: integração MCP (servidores de ferramentas) ---
-mcp>=1.0.0
+# ouvir a call (voz → texto)
+discord-ext-voice-recv
+faster-whisper>=1.2
 
-# --- opcional: frontend Discord ---
-discord.py>=2.3
+# opcional: voz pelo ChipForge (motor "chipforge") fica rápida com scipy
+scipy>=1.10
+
+# testes
+pytest

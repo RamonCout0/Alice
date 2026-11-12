@@ -1,1 +1,0 @@
-{"nome":"AudioStreamPlaybackPlaylist","herda":"AudioStreamPlayback","breve":"Playback class used for AudioStreamPlaylist.","descricao":"Playback component of AudioStreamPlaylist. Handles the playback of multiple AudioStreams in sequence."}

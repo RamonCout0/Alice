@@ -1,1 +1,0 @@
-{"nome":"VideoStreamTheora","herda":"VideoStream","breve":"VideoStream resource for Ogg Theora videos.","descricao":"VideoStream resource handling the Ogg Theora video format with .ogv extension. The Theora codec is decoded on the CPU.\nNote: While Ogg Theora videos can also have a .ogg extension, you will have to rename the extension to .ogv to use those videos within Godot."}

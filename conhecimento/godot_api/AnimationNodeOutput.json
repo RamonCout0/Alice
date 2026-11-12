@@ -1,1 +1,0 @@
-{"nome":"AnimationNodeOutput","herda":"AnimationNode","breve":"The animation output node of an AnimationNodeBlendTree.","descricao":"A node created automatically in an AnimationNodeBlendTree that outputs the final animation."}

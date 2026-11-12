@@ -1,1 +1,0 @@
-{"nome":"OpenXRExtensionWrapperExtension","herda":"OpenXRExtensionWrapper","breve":"Allows implementing OpenXR extensions with GDExtension.","descricao":"OpenXRExtensionWrapperExtension allows implementing OpenXR extensions with GDExtension. The extension should be registered with 'OpenXRExtensionWrapper.register_extension_wrapper'."}

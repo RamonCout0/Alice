@@ -1,1 +1,0 @@
-{"nome":"VisualShaderNodeDotProduct","herda":"VisualShaderNode","breve":"Calculates a dot product of two vectors within the visual shader graph.","descricao":"Translates to dot(a, b) in the shader language."}

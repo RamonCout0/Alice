@@ -1,1 +1,0 @@
-{"nome":"OpenXRCompositionLayerQuad","herda":"OpenXRCompositionLayer","breve":"An OpenXR composition layer that is rendered as a quad.","descricao":"An OpenXR composition layer that allows rendering a SubViewport on a quad.","propriedades":[{"nome":"quad_size","tipo":"Vector2","padrao":"Vector2(1, 1)","desc":"The dimensions of the quad."}]}

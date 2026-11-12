@@ -1,1 +1,0 @@
-{"nome":"OpenXRVisibilityMask","herda":"VisualInstance3D","breve":"Draws a stereo correct visibility mask.","descricao":"The visibility mask allows us to black out the part of the render result that is invisible due to lens distortion.\nAs this is rendered first, it prevents fragments with expensive lighting calculations to be processed as they are discarded through z-checking."}
