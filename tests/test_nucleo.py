@@ -352,3 +352,22 @@ def test_chamada_por_voz_e_lixo_do_whisper():
     assert not rx.search("a malícia do goblin")
     assert not frase_util("Legendas pela comunidade Amara.org") and not frase_util("Obrigado.")
     assert frase_util("rola iniciativa pro goblin")
+
+
+# ------------------------------------------- geração de base (sem ComfyUI aberto)
+def test_pixelart_sem_comfyui_avisa_em_vez_de_quebrar(ctx):
+    """Regressão: `cfg=` do sampler colidia com o parâmetro `cfg` (configuração)."""
+    ctx.cfg.comfy_url = "http://127.0.0.1:9"          # porta fechada
+    ctx.cfg.liberar_vram = False
+    r = rodar(pixelart.pixel_art(ctx, "red potion bottle"))
+    assert "não deu pra gerar a base" in r and not ctx.arquivos
+
+
+def test_imagem_sem_comfyui_avisa_em_vez_de_quebrar(ctx):
+    from alice.ferramentas import imagem
+    ctx.cfg.comfy_url = "http://127.0.0.1:9"
+    ctx.cfg.liberar_vram = False
+    assert "não deu pra gerar" in rodar(imagem.gerar_imagem(ctx, "a red dragon on a volcano"))
+    assert "não desenho" in rodar(imagem.gerar_imagem(ctx, "nude elf"))
+    wf = imagem.montar_workflow("m.safetensors", "p", "n", 1024, 1024, 24, 6.0, "euler", "normal", 1, lora="l.safetensors")
+    assert wf["ks"]["inputs"]["model"] == ["lora", 0] and wf["pos"]["inputs"]["clip"] == ["lora", 1]

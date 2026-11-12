@@ -89,9 +89,13 @@ async def _descarregar_llm(cfg) -> None:
         pass
 
 
-async def gerar(cfg, prompt: str, estilo: str = "anime", formato: str = "quadrado",
+async def gerar(cfg, /, prompt: str, estilo: str = "anime", formato: str = "quadrado",
                 semente: int | None = None, **ajustes) -> tuple[bytes, dict]:
-    """Devolve (png, parâmetros usados). Levanta ImagemIndisponivel se o ComfyUI não responder."""
+    """Devolve (png, parâmetros usados). Levanta ImagemIndisponivel se o ComfyUI não responder.
+
+    `cfg` (a configuração) é só posicional de propósito: entre os `ajustes` existe
+    um parâmetro do sampler que também se chama "cfg" (a escala de guidance).
+    """
     est = {**ESTILOS.get(estilo, ESTILOS["anime"]), **{k: v for k, v in ajustes.items() if v is not None}}
     largura, altura = FORMATOS.get(formato, FORMATOS["quadrado"])
     semente = semente if semente is not None else random.randint(0, 2**31 - 1)

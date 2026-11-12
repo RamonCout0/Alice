@@ -290,6 +290,20 @@ def embed_gatuno(it: dict) -> discord.Embed:
 def registrar_comandos(bot: Alice):
     tree, cfg = bot.tree, bot.cfg
 
+    @tree.error
+    async def ao_errar(i: discord.Interaction, erro: app_commands.AppCommandError):
+        """Comando que quebra não pode deixar o Discord em 'pensando…' pra sempre."""
+        original = getattr(erro, "original", erro)
+        log.error("erro em /%s", i.command.qualified_name if i.command else "?", exc_info=original)
+        texto = f"Deu ruim aqui dentro ({type(original).__name__}). Já ficou anotado no terminal do Ramon."
+        try:
+            if i.response.is_done():
+                await i.followup.send(texto, ephemeral=True)
+            else:
+                await i.response.send_message(texto, ephemeral=True)
+        except discord.HTTPException:
+            pass
+
     def ctx_de(i: discord.Interaction) -> fer.Contexto:
         return bot.contexto(i.user, i.guild, i.channel_id)
 
